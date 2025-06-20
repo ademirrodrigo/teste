@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="pt-BR">
+<head><meta charset="utf-8"><title>Instrutores</title></head>
+<body>
+<h1>Instrutores</h1>
+<form method="post">
+  <input type="text" name="name" placeholder="Nome" required>
+  <button type="submit">Adicionar</button>
+</form>
+<ul>
+{% for instructor in instructors %}
+  <li>{{ instructor.name }}</li>
+{% endfor %}
+</ul>
+<a href="{{ url_for('index') }}">Voltar</a>
+</body>
+</html>
