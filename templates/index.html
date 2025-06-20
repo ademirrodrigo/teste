@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <title>Pilates Studio</title>
+</head>
+<body>
+  <h1>Agenda de Aulas</h1>
+  <nav>
+    <a href="{{ url_for('students') }}">Alunos</a> |
+    <a href="{{ url_for('instructors') }}">Instrutores</a> |
+    <a href="{{ url_for('classes') }}">Agendar Aula</a> |
+    <a href="{{ url_for('payments') }}">Pagamentos</a>
+  </nav>
+  <ul>
+  {% for s in schedules %}
+    <li>{{ s.start_time }} - {{ s.student.name }} com {{ s.instructor.name }}</li>
+  {% else %}
+    <li>Nenhuma aula agendada.</li>
+  {% endfor %}
+  </ul>
+</body>
+</html>

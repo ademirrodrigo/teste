@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="pt-BR">
+<head><meta charset="utf-8"><title>Agendar Aula</title></head>
+<body>
+<h1>Agendar Aula</h1>
+<form method="post">
+  <select name="student_id" required>
+    {% for student in students %}
+      <option value="{{ student.id }}">{{ student.name }}</option>
+    {% endfor %}
+  </select>
+  <select name="instructor_id" required>
+    {% for instructor in instructors %}
+      <option value="{{ instructor.id }}">{{ instructor.name }}</option>
+    {% endfor %}
+  </select>
+  <input type="datetime-local" name="start_time" required>
+  <button type="submit">Agendar</button>
+</form>
+<ul>
+{% for s in schedules %}
+  <li>{{ s.start_time }} - {{ s.student.name }} com {{ s.instructor.name }}</li>
+{% endfor %}
+</ul>
+<a href="{{ url_for('index') }}">Voltar</a>
+</body>
+</html>
