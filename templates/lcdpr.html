@@ -1,0 +1,23 @@
+{% extends 'base.html' %}
+{% block title %}Carnê-Leão (LCDPR){% endblock %}
+{% block content %}
+<section class="card" style="max-width:720px;margin:0 auto;">
+    <h2 style="margin-top:0;">Gerar arquivo do Livro Caixa Digital (LCDPR)</h2>
+    <p style="color:rgba(31,41,51,0.75);">Informe o ano-base. O sistema irá compilar os pagamentos marcados como <strong>pago</strong> e gerar um arquivo no layout oficial para importação no programa da Receita Federal.</p>
+    <form method="post" style="margin-top:1.5rem;display:flex;flex-direction:column;gap:1rem;">
+        <div>
+            <label for="year">Ano-base</label>
+            <input type="number" name="year" id="year" min="2020" max="{{ today.year }}" value="{{ today.year }}" required>
+        </div>
+        <button type="submit">Gerar arquivo</button>
+    </form>
+    <div style="margin-top:1.5rem;padding:1rem;border-radius:12px;background:rgba(79,62,197,0.08);">
+        <h3 style="margin-top:0;">Checklist para o Carnê-Leão</h3>
+        <ul>
+            <li>Cadastre o CPF dos alunos para que sejam incluídos no arquivo.</li>
+            <li>Marque os pagamentos como <em>Pago</em> e informe a data efetiva.</li>
+            <li>Atualize os dados cadastrais do estúdio (nome, endereço, CPF/CNPJ) antes da geração.</li>
+        </ul>
+    </div>
+</section>
+{% endblock %}

@@ -1,0 +1,29 @@
+{% extends 'base.html' %}
+{% block title %}Estúdios cadastrados{% endblock %}
+{% block content %}
+<section class="card">
+    <h2 style="margin-top:0;">Estúdios no sistema</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Nome</th>
+                <th>Responsável</th>
+                <th>Contato</th>
+                <th>Desde</th>
+                <th>Acessar</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for studio in studios %}
+            <tr>
+                <td>{{ studio.trade_name or studio.name }}</td>
+                <td>{{ studio.owner_name }}</td>
+                <td>{{ studio.owner_email }}{% if studio.whatsapp %}<br>WhatsApp: {{ studio.whatsapp }}{% endif %}</td>
+                <td>{{ studio.created_at.strftime('%d/%m/%Y') }}</td>
+                <td><a href="{{ url_for('dashboard', studio_id=studio.id) }}" style="color:var(--brand);font-weight:600;">Dashboard</a></td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</section>
+{% endblock %}

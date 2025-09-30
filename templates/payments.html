@@ -1,0 +1,107 @@
+{% extends 'base.html' %}
+{% block title %}Financeiro{% endblock %}
+{% block content %}
+<section class="card">
+    <h2 style="margin-top:0;">Registrar pagamento</h2>
+    <form method="post" class="grid columns-2">
+        <div>
+            <label for="student_id">Aluno *</label>
+            <select name="student_id" id="student_id" required>
+                <option value="">Selecione</option>
+                {% for student in students %}
+                    <option value="{{ student.id }}">{{ student.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div>
+            <label for="amount">Valor *</label>
+            <input type="number" step="0.01" min="0" name="amount" id="amount" required>
+        </div>
+        <div>
+            <label for="category">Categoria</label>
+            <select name="category" id="category">
+                <option value="mensalidade">Mensalidade</option>
+                <option value="pacote">Pacote</option>
+                <option value="aula_avulsa">Aula avulsa</option>
+                <option value="outros">Outros</option>
+            </select>
+        </div>
+        <div>
+            <label for="method">Forma de pagamento</label>
+            <select name="method" id="method">
+                <option value="pix">PIX</option>
+                <option value="cartao_credito">Cartão crédito</option>
+                <option value="cartao_debito">Cartão débito</option>
+                <option value="dinheiro">Dinheiro</option>
+                <option value="transferencia">Transferência</option>
+            </select>
+        </div>
+        <div>
+            <label for="due_date">Vencimento *</label>
+            <input type="date" name="due_date" id="due_date" required>
+        </div>
+        <div>
+            <label for="paid_date">Data de pagamento</label>
+            <input type="date" name="paid_date" id="paid_date">
+        </div>
+        <div style="grid-column:1 / -1;">
+            <label for="description">Descrição</label>
+            <textarea name="description" id="description" rows="2" placeholder="Mensalidade agosto"></textarea>
+        </div>
+        <div>
+            <label for="status">Status</label>
+            <select name="status" id="status">
+                <option value="pendente">Pendente</option>
+                <option value="pago">Pago</option>
+                <option value="cancelado">Cancelado</option>
+            </select>
+        </div>
+        <div style="display:flex;align-items:flex-end;">
+            <button type="submit">Salvar pagamento</button>
+        </div>
+    </form>
+</section>
+
+<section class="card">
+    <h2 style="margin-top:0;">Pagamentos recentes</h2>
+    {% if payments %}
+    <table>
+        <thead>
+            <tr>
+                <th>Aluno</th>
+                <th>Valor</th>
+                <th>Categoria</th>
+                <th>Vencimento</th>
+                <th>Pagamento</th>
+                <th>Status</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for payment in payments %}
+            <tr>
+                <td>{{ payment.student.name }}</td>
+                <td>R$ {{ '%.2f'|format(payment.amount) }}</td>
+                <td>{{ payment.category }}</td>
+                <td>{{ payment.due_date.strftime('%d/%m/%Y') }}</td>
+                <td>{% if payment.paid_date %}{{ payment.paid_date.strftime('%d/%m/%Y') }}{% else %}-{% endif %}</td>
+                <td>{{ payment.status|capitalize }}</td>
+                <td>
+                    <form method="post" action="{{ url_for('update_payment_status', payment_id=payment.id) }}" style="display:flex;gap:0.5rem;">
+                        <select name="status">
+                            <option value="pendente" {% if payment.status == 'pendente' %}selected{% endif %}>Pendente</option>
+                            <option value="pago" {% if payment.status == 'pago' %}selected{% endif %}>Pago</option>
+                            <option value="cancelado" {% if payment.status == 'cancelado' %}selected{% endif %}>Cancelado</option>
+                        </select>
+                        <button type="submit" style="background:#00b894;">Atualizar</button>
+                    </form>
+                </td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+        <p>Ainda não há registros financeiros.</p>
+    {% endif %}
+</section>
+{% endblock %}

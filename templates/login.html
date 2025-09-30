@@ -1,0 +1,20 @@
+{% extends 'base.html' %}
+{% block title %}Login • Pilates Control{% endblock %}
+{% block content %}
+<div class="card" style="max-width:420px;margin:2rem auto;">
+    <h2 style="margin-top:0;">Acesso ao sistema</h2>
+    <p style="margin-bottom:1.5rem;color:rgba(31,41,51,0.7);">Entre com seu e-mail e senha para acessar o painel do estúdio.</p>
+    <form method="post">
+        <div>
+            <label for="email">E-mail</label>
+            <input type="email" name="email" id="email" required autofocus>
+        </div>
+        <div>
+            <label for="password">Senha</label>
+            <input type="password" name="password" id="password" required>
+        </div>
+        <button type="submit">Entrar</button>
+    </form>
+    <p style="margin-top:1.5rem;font-size:0.9rem;">Ainda não possui conta? <a href="{{ url_for('register') }}">Cadastre seu estúdio</a>.</p>
+</div>
+{% endblock %}

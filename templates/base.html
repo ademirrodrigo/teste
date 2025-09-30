@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Pilates Control{% endblock %}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            color-scheme: light dark;
+            --brand: #6c5ce7;
+            --brand-dark: #4f3ec5;
+            --surface: rgba(255,255,255,0.85);
+            --border: rgba(108,92,231,0.15);
+            --bg: #f4f5fb;
+            --text: #1f2933;
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+        }
+        header {
+            background: linear-gradient(135deg, var(--brand), #8e7ff5);
+            color: white;
+            padding: 1.25rem 2rem;
+        }
+        header h1 {
+            margin: 0;
+            font-size: 1.4rem;
+        }
+        nav {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+            margin-top: 0.75rem;
+        }
+        nav a {
+            color: white;
+            text-decoration: none;
+            font-weight: 600;
+            padding: 0.35rem 0.8rem;
+            border-radius: 999px;
+            background: rgba(255,255,255,0.16);
+            transition: all 0.2s ease;
+        }
+        nav a:hover {
+            background: rgba(255,255,255,0.32);
+        }
+        main {
+            padding: 2rem clamp(1rem, 4vw, 3rem);
+            min-height: 70vh;
+        }
+        .card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 1.5rem;
+            box-shadow: 0 20px 40px -24px rgba(79, 62, 197, 0.35);
+            backdrop-filter: blur(12px);
+            margin-bottom: 1.5rem;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            padding: 0.75rem;
+            border-bottom: 1px solid rgba(79,62,197,0.1);
+            text-align: left;
+        }
+        th {
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            letter-spacing: 0.08em;
+            color: rgba(31,41,51,0.65);
+        }
+        form {
+            display: grid;
+            gap: 1rem;
+        }
+        label {
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+        input, select, textarea {
+            width: 100%;
+            padding: 0.65rem 0.75rem;
+            border-radius: 12px;
+            border: 1px solid rgba(79,62,197,0.25);
+            font-size: 1rem;
+            background: rgba(255,255,255,0.9);
+        }
+        button {
+            border: none;
+            background: var(--brand);
+            color: white;
+            padding: 0.75rem 1.5rem;
+            font-weight: 600;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: transform 0.15s ease, box-shadow 0.2s ease;
+        }
+        button:hover {
+            background: var(--brand-dark);
+            transform: translateY(-1px);
+            box-shadow: 0 12px 24px -16px rgba(79, 62, 197, 0.9);
+        }
+        .flash {
+            padding: 0.75rem 1rem;
+            background: rgba(108,92,231,0.12);
+            border: 1px solid rgba(108,92,231,0.3);
+            border-radius: 12px;
+            margin-bottom: 1.25rem;
+            font-weight: 600;
+        }
+        footer {
+            text-align: center;
+            padding: 1.5rem;
+            font-size: 0.85rem;
+            color: rgba(31,41,51,0.6);
+        }
+        .grid {
+            display: grid;
+            gap: 1.5rem;
+        }
+        .grid.columns-2 {
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+        }
+        .chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            padding: 0.3rem 0.75rem;
+            background: rgba(79,62,197,0.1);
+            border-radius: 999px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+        @media (max-width: 720px) {
+            header, main {
+                padding-left: 1.25rem;
+                padding-right: 1.25rem;
+            }
+            table {
+                display: block;
+                overflow-x: auto;
+            }
+        }
+    </style>
+    {% block head %}{% endblock %}
+</head>
+<body>
+    <header>
+        <div style="display:flex;flex-direction:column;gap:0.5rem;">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:1rem;flex-wrap:wrap;">
+                <h1>{% if current_studio %}{{ current_studio.trade_name or current_studio.name }}{% else %}Pilates Control{% endif %}</h1>
+                <div style="font-size:0.85rem;opacity:0.9;">
+                    {% if current_user.is_authenticated %}
+                        Olá, {{ current_user.name }} • <a style="color:white;text-decoration:underline;" href="{{ url_for('logout') }}">Sair</a>
+                    {% endif %}
+                </div>
+            </div>
+            {% if current_user.is_authenticated %}
+            <nav>
+                <a href="{{ url_for('dashboard') }}">Dashboard</a>
+                <a href="{{ url_for('students') }}">Alunos</a>
+                <a href="{{ url_for('instructors') }}">Instrutores</a>
+                <a href="{{ url_for('classes') }}">Agenda</a>
+                <a href="{{ url_for('payments') }}">Financeiro</a>
+                <a href="{{ url_for('reminders') }}">Lembretes</a>
+                <a href="{{ url_for('lcdpr_report') }}">Carnê-Leão</a>
+                {% if current_user.role in ['owner', 'superadmin'] %}
+                    <a href="{{ url_for('manage_users') }}">Usuários</a>
+                {% endif %}
+                {% if current_user.is_superadmin %}
+                    <a href="{{ url_for('studios') }}">Estúdios</a>
+                {% endif %}
+            </nav>
+            {% endif %}
+        </div>
+    </header>
+    <main>
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="flash">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+        {% block content %}{% endblock %}
+    </main>
+    <footer>
+        Pilates Control • Micro-SaaS local para estúdios de Pilates • {{ today.strftime('%d/%m/%Y') }}
+    </footer>
+</body>
+</html>

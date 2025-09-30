@@ -1,0 +1,110 @@
+{% extends 'base.html' %}
+{% block title %}Agenda{% endblock %}
+{% block content %}
+<section class="card">
+    <h2 style="margin-top:0;">Agendar nova aula</h2>
+    <form method="post" class="grid columns-2">
+        <div>
+            <label for="title">Título</label>
+            <input type="text" name="title" id="title" placeholder="Aula de Pilates">
+        </div>
+        <div>
+            <label for="instructor_id">Instrutor *</label>
+            <select name="instructor_id" id="instructor_id" required>
+                <option value="">Selecione</option>
+                {% for instructor in instructors %}
+                    <option value="{{ instructor.id }}">{{ instructor.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div>
+            <label for="start_time">Início *</label>
+            <input type="datetime-local" name="start_time" id="start_time" required>
+        </div>
+        <div>
+            <label for="end_time">Fim *</label>
+            <input type="datetime-local" name="end_time" id="end_time" required>
+        </div>
+        <div>
+            <label for="location">Local</label>
+            <input type="text" name="location" id="location" placeholder="Sala 1">
+        </div>
+        <div>
+            <label for="capacity">Capacidade</label>
+            <input type="number" min="1" name="capacity" id="capacity" value="1">
+        </div>
+        <div style="grid-column: 1 / -1;">
+            <label for="student_ids">Alunos confirmados</label>
+            <select id="student_ids" name="student_ids" multiple size="5" style="height:auto;">
+                {% for student in students %}
+                    <option value="{{ student.id }}">{{ student.name }}</option>
+                {% endfor %}
+            </select>
+            <small>Use CTRL/CMD para selecionar vários alunos.</small>
+        </div>
+        <div style="grid-column: 1 / -1;">
+            <label for="notes">Observações</label>
+            <textarea name="notes" id="notes" rows="3"></textarea>
+        </div>
+        <div style="grid-column: 1 / -1;">
+            <button type="submit">Agendar aula</button>
+        </div>
+    </form>
+</section>
+
+<section class="card">
+    <h2 style="margin-top:0;">Últimas aulas cadastradas</h2>
+    {% if schedules %}
+    <table>
+        <thead>
+            <tr>
+                <th>Título</th>
+                <th>Instrutor</th>
+                <th>Início</th>
+                <th>Fim</th>
+                <th>Local</th>
+                <th>Inscrições</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for schedule in schedules %}
+            <tr>
+                <td>{{ schedule.title }}</td>
+                <td>{{ schedule.instructor.name }}</td>
+                <td>{{ schedule.start_time.strftime('%d/%m/%Y %H:%M') }}</td>
+                <td>{{ schedule.end_time.strftime('%d/%m/%Y %H:%M') }}</td>
+                <td>{{ schedule.location or '-' }}</td>
+                <td>
+                    {% if schedule.enrollments %}
+                        {{ schedule.enrollments|length }} aluno(s)
+                        <form method="post" action="{{ url_for('enroll_student', class_id=schedule.id) }}" style="margin-top:0.5rem;display:flex;gap:0.5rem;">
+                            <select name="student_id">
+                                <option value="">Adicionar aluno</option>
+                                {% for student in students %}
+                                    <option value="{{ student.id }}">{{ student.name }}</option>
+                                {% endfor %}
+                            </select>
+                            <button type="submit" style="background:#0984e3;">Matricular</button>
+                        </form>
+                    {% else %}
+                        Nenhum aluno inscrito
+                        <form method="post" action="{{ url_for('enroll_student', class_id=schedule.id) }}" style="margin-top:0.5rem;display:flex;gap:0.5rem;">
+                            <select name="student_id">
+                                <option value="">Adicionar aluno</option>
+                                {% for student in students %}
+                                    <option value="{{ student.id }}">{{ student.name }}</option>
+                                {% endfor %}
+                            </select>
+                            <button type="submit" style="background:#0984e3;">Matricular</button>
+                        </form>
+                    {% endif %}
+                </td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+        <p>Nenhuma aula cadastrada até o momento.</p>
+    {% endif %}
+</section>
+{% endblock %}
