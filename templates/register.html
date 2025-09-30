@@ -1,0 +1,44 @@
+{% extends 'base.html' %}
+{% block title %}Cadastro do estúdio{% endblock %}
+{% block content %}
+<div class="card" style="max-width:680px;margin:2rem auto;">
+    <h2 style="margin-top:0;">Cadastre seu estúdio</h2>
+    <p style="margin-bottom:1.5rem;color:rgba(31,41,51,0.7);">
+        Este assistente cria um estúdio multiusuário. Após o cadastro você poderá convidar sua equipe, cadastrar alunos e gerar o Carnê-Leão.
+    </p>
+    <form method="post" class="grid columns-2">
+        <div>
+            <label for="studio_name">Nome comercial do estúdio *</label>
+            <input type="text" name="studio_name" id="studio_name" required>
+        </div>
+        <div>
+            <label for="owner_name">Responsável *</label>
+            <input type="text" name="owner_name" id="owner_name" required>
+        </div>
+        <div>
+            <label for="owner_cpf">CPF do responsável *</label>
+            <input type="text" name="owner_cpf" id="owner_cpf" required>
+        </div>
+        <div>
+            <label for="owner_email">E-mail *</label>
+            <input type="email" name="owner_email" id="owner_email" required>
+        </div>
+        <div>
+            <label for="phone">Telefone</label>
+            <input type="text" name="phone" id="phone">
+        </div>
+        <div>
+            <label for="whatsapp">WhatsApp</label>
+            <input type="text" name="whatsapp" id="whatsapp">
+        </div>
+        <div>
+            <label for="password">Senha *</label>
+            <input type="password" name="password" id="password" required>
+        </div>
+        <div style="display:flex;align-items:flex-end;">
+            <button type="submit">Criar estúdio</button>
+        </div>
+    </form>
+    <p style="margin-top:1.5rem;font-size:0.9rem;">Já possui conta? <a href="{{ url_for('login') }}">Faça login</a>.</p>
+</div>
+{% endblock %}

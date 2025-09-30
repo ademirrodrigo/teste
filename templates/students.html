@@ -1,0 +1,68 @@
+{% extends 'base.html' %}
+{% block title %}Alunos{% endblock %}
+{% block content %}
+<section class="grid columns-2">
+    <div class="card">
+        <h2 style="margin-top:0;">Novo aluno</h2>
+        <form method="post">
+            <div>
+                <label for="name">Nome *</label>
+                <input type="text" id="name" name="name" required>
+            </div>
+            <div>
+                <label for="email">E-mail</label>
+                <input type="email" id="email" name="email">
+            </div>
+            <div>
+                <label for="whatsapp">WhatsApp</label>
+                <input type="text" id="whatsapp" name="whatsapp" placeholder="11999999999">
+            </div>
+            <div>
+                <label for="tax_id">CPF/CNPJ</label>
+                <input type="text" id="tax_id" name="tax_id">
+            </div>
+            <div>
+                <label for="notes">Observações</label>
+                <textarea id="notes" name="notes" rows="3"></textarea>
+            </div>
+            <button type="submit">Salvar aluno</button>
+        </form>
+    </div>
+    <div class="card">
+        <h2 style="margin-top:0;">Lista de alunos</h2>
+        {% if students %}
+        <table>
+            <thead>
+                <tr>
+                    <th>Nome</th>
+                    <th>Contato</th>
+                    <th>Documento</th>
+                    <th>Status</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for student in students %}
+                <tr>
+                    <td>{{ student.name }}</td>
+                    <td>
+                        {% if student.email %}<div>{{ student.email }}</div>{% endif %}
+                        {% if student.whatsapp %}<div>WhatsApp: {{ student.whatsapp }}</div>{% endif %}
+                    </td>
+                    <td>{{ student.tax_id or '-' }}</td>
+                    <td>{{ 'Ativo' if student.active else 'Inativo' }}</td>
+                    <td>
+                        <form method="post" action="{{ url_for('toggle_student', student_id=student.id) }}" style="display:inline;">
+                            <button type="submit" style="background:#2ecc71;">Alternar</button>
+                        </form>
+                    </td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+            <p>Nenhum aluno cadastrado ainda.</p>
+        {% endif %}
+    </div>
+</section>
+{% endblock %}

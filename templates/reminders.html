@@ -1,0 +1,86 @@
+{% extends 'base.html' %}
+{% block title %}Lembretes{% endblock %}
+{% block content %}
+<section class="card">
+    <h2 style="margin-top:0;">Agendar lembretes</h2>
+    <form method="post">
+        <div class="grid columns-2">
+            <div>
+                <label for="class_id">Aula</label>
+                <select name="class_id" id="class_id">
+                    {% for class in upcoming_classes %}
+                        <option value="{{ class.id }}">{{ class.title }} • {{ class.start_time.strftime('%d/%m %H:%M') }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label for="channel">Canal</label>
+                <select name="channel" id="channel">
+                    <option value="manual">Manual</option>
+                    <option value="email">E-mail</option>
+                    <option value="whatsapp">WhatsApp</option>
+                </select>
+            </div>
+            <div style="grid-column:1 / -1;">
+                <label for="message">Mensagem</label>
+                <textarea name="message" id="message" rows="3" placeholder="Olá! Confirmamos sua aula de amanhã às 9h."></textarea>
+            </div>
+        </div>
+        <div style="margin-top:1rem;">
+            <p style="font-size:0.9rem;color:rgba(31,41,51,0.7);">Selecione os alunos que receberão o lembrete:</p>
+            <div style="display:flex;flex-direction:column;gap:0.5rem;max-height:240px;overflow:auto;border:1px solid rgba(79,62,197,0.15);border-radius:12px;padding:1rem;">
+                {% for class in upcoming_classes %}
+                    <div>
+                        <strong>{{ class.title }} • {{ class.start_time.strftime('%d/%m %H:%M') }}</strong>
+                        {% if class.enrollments %}
+                            <div style="display:flex;flex-wrap:wrap;gap:0.5rem;margin-top:0.5rem;">
+                                {% for enrollment in class.enrollments %}
+                                    <label style="display:flex;align-items:center;gap:0.35rem;background:rgba(79,62,197,0.08);padding:0.35rem 0.75rem;border-radius:999px;">
+                                        <input type="checkbox" name="enrollment_ids" value="{{ enrollment.id }}">
+                                        {{ enrollment.student.name }}
+                                    </label>
+                                {% endfor %}
+                            </div>
+                        {% else %}
+                            <p style="font-size:0.85rem;color:rgba(31,41,51,0.6);">Sem alunos matriculados.</p>
+                        {% endif %}
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+        <div style="margin-top:1.25rem;">
+            <button type="submit">Salvar lembretes</button>
+        </div>
+    </form>
+</section>
+
+<section class="card">
+    <h2 style="margin-top:0;">Histórico</h2>
+    {% if reminder_history %}
+        <table>
+            <thead>
+                <tr>
+                    <th>Aluno</th>
+                    <th>Aula</th>
+                    <th>Canal</th>
+                    <th>Agendado para</th>
+                    <th>Registrado em</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for reminder in reminder_history %}
+                <tr>
+                    <td>{{ reminder.student.name if reminder.student else '-' }}</td>
+                    <td>{{ reminder.class_schedule.title if reminder.class_schedule else '-' }}</td>
+                    <td>{{ reminder.channel|capitalize }}</td>
+                    <td>{% if reminder.scheduled_for %}{{ reminder.scheduled_for.strftime('%d/%m/%Y %H:%M') }}{% else %}-{% endif %}</td>
+                    <td>{{ reminder.sent_at.strftime('%d/%m/%Y %H:%M') }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p>Sem lembretes registrados.</p>
+    {% endif %}
+</section>
+{% endblock %}
