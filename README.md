@@ -1,0 +1,141 @@
+# Monitoramento do eCAC
+
+Este repositório contém uma ferramenta CLI em Python para monitorar periodicamente o eCAC para escritórios de contabilidade. Ela autentica usando o certificado digital de cada contribuinte (empresa ou pessoa física) e a procuração eletrônica do contador, consulta uma API proprietária e registra novos eventos em um banco SQLite, disparando alertas via webhook.
+
+## Requisitos
+
+- Python 3.9 ou superior
+- Bibliotecas [`requests`](https://pypi.org/project/requests/) e [`Flask`](https://flask.palletsprojects.com/)
+- Certificados digitais (`.pem`) de cada cliente e procuração eletrônica ativa para o contador
+- API própria do escritório capaz de autenticar e consultar notificações/obrigações do eCAC
+
+Instale a dependência:
+
+```bash
+python -m pip install --upgrade pip
+pip install -r requirements.txt
+```
+
+## Configuração da API
+
+1. Copie o arquivo de exemplo `monitor_config.example.json` para `monitor_config.json` e edite os valores:
+   - `api_base_url`: URL base da API proprietária (sem barra no final).
+   - `contador_document`: CPF/CNPJ do contador com procuração.
+   - `procuracao_token`: token padrão usado na autorização.
+   - Opcional: `poll_interval`, `verify_ssl`, `timeout`, `webhook_url`.
+2. Garanta que os certificados `.pem` de cada cliente estejam acessíveis no servidor onde o monitor rodará.
+
+## Banco de dados
+
+O monitor cria automaticamente o arquivo SQLite definido por `--database` (padrão `monitor.db`) com as tabelas `clients` e `events`. Faça backup periódico desse arquivo se precisar de histórico.
+
+## Cadastro de clientes
+
+Execute o comando abaixo para cada cliente, informando os caminhos dos certificados e, se necessário, a senha do certificado e token de procuração específico:
+
+```bash
+python main.py add-client \
+  --database monitor.db \
+  12345678000190 "Empresa Exemplo Ltda" PJ \
+  /caminho/certificados/empresa.pem \
+  /caminho/certificados/empresa-key.pem \
+  --certificate-password "senhaOpcional" \
+  --procuracao-token "tokenOpcional"
+```
+
+Para listar os clientes cadastrados:
+
+```bash
+python main.py list-clients --database monitor.db
+```
+
+### Atualização, remoção e status de clientes
+
+- Atualize informações (nome, tipo, caminhos de arquivos ou credenciais específicas):
+
+  ```bash
+  python main.py update-client \
+    --database monitor.db \
+    12345678000190 \
+    --name "Empresa Nova" \
+    --certificate /novo/caminho/cert.pem \
+    --key /novo/caminho/key.pem
+  ```
+
+- Remova um cliente (os eventos associados também são excluídos):
+
+  ```bash
+  python main.py delete-client --database monitor.db 12345678000190
+  ```
+
+- Consulte o último status consolidado retornado pela API:
+
+  ```bash
+  python main.py show-status --database monitor.db 12345678000190
+  ```
+
+- Liste eventos registrados, com suporte a filtros e paginação simples:
+
+  ```bash
+  python main.py list-events --database monitor.db --document 12345678000190 --limit 20
+  ```
+
+## Execução do monitoramento
+
+### Execução contínua
+
+Para rodar continuamente (modo daemon simples), use:
+
+```bash
+python main.py run --database monitor.db --config monitor_config.json
+```
+
+O processo fica em loop consultando a API a cada `poll_interval` segundos, atualizando o banco e enviando alertas para o webhook (quando configurado).
+
+### Execução de ciclo único
+
+Se quiser executar apenas um ciclo (por exemplo, em uma pipeline agendada ou cron job), adicione `--once`:
+
+```bash
+python main.py run --database monitor.db --config monitor_config.json --once
+```
+
+Para executar o ciclo apenas para um cliente específico (útil em fluxos manuais ou integrações), informe `--client`:
+
+```bash
+python main.py run --database monitor.db --config monitor_config.json --client 12345678000190
+```
+
+## Interface web
+
+Além da CLI, o repositório inclui um painel web simples (`webapp.py`) para cadastrar clientes e disparar ciclos manuais do monitor.
+
+1. Configure as variáveis de ambiente:
+   ```bash
+   export MONITOR_DATABASE=monitor.db
+   export MONITOR_CONFIG=/caminho/para/monitor_config.json
+   export FLASK_SECRET_KEY="uma-string-aleatoria"
+   ```
+2. Inicie o servidor:
+   ```bash
+   python webapp.py
+   ```
+3. Acesse `http://localhost:8000` para visualizar clientes, cadastrar novos, editar registros, remover cadastros, examinar o
+   histórico de eventos e executar ciclos sob demanda (globais ou por cliente).
+
+O painel reutiliza o mesmo banco SQLite e respeita as configurações do arquivo JSON. Certifique-se de que o processo tenha acesso
+aos certificados de cada cliente.
+
+## Logs e observabilidade
+
+Os logs são enviados para `stdout` com nível `INFO` por padrão. Para aumentar a verbosidade, ajuste a variável de ambiente `PYTHONLOGLEVEL` ou modifique `logging.basicConfig` em `main.py`.
+
+## Deploy sugerido
+
+- Configure um serviço do sistema (ex.: `systemd`) para iniciar o comando contínuo após o boot.
+- Armazene os certificados em diretório protegido, com permissões restritas ao usuário que executa o monitor.
+- Utilize `venv` dedicado para isolar as dependências Python.
+
+## Suporte
+
+Em caso de dúvidas, entre em contato com o time responsável pela API proprietária ou adapte o código para atender às particularidades do seu escritório.

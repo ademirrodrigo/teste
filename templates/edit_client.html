@@ -1,0 +1,61 @@
+{% extends 'base.html' %}
+{% block title %}Editar {{ client.name }} - Monitor eCAC{% endblock %}
+{% block content %}
+<form action="{{ url_for('update_client', document=client.document) }}" method="post" class="box">
+  <div class="field">
+    <label class="label">Documento</label>
+    <div class="control">
+      <input class="input" type="text" value="{{ client.document }}" disabled>
+    </div>
+  </div>
+  <div class="field">
+    <label class="label">Nome / Razão Social</label>
+    <div class="control">
+      <input class="input" type="text" name="name" value="{{ client.name }}" required>
+    </div>
+  </div>
+  <div class="field">
+    <label class="label">Tipo</label>
+    <div class="control">
+      <div class="select">
+        <select name="client_type" required>
+          <option value="PJ" {% if client.client_type == 'PJ' %}selected{% endif %}>Pessoa Jurídica</option>
+          <option value="PF" {% if client.client_type == 'PF' %}selected{% endif %}>Pessoa Física</option>
+        </select>
+      </div>
+    </div>
+  </div>
+  <div class="field">
+    <label class="label">Certificado (PEM)</label>
+    <div class="control">
+      <input class="input" type="text" name="certificate" value="{{ client.certificate_path }}" required>
+    </div>
+  </div>
+  <div class="field">
+    <label class="label">Chave privada (PEM)</label>
+    <div class="control">
+      <input class="input" type="text" name="key" value="{{ client.key_path }}" required>
+    </div>
+  </div>
+  <div class="field">
+    <label class="label">Senha do certificado</label>
+    <div class="control">
+      <input class="input" type="password" name="certificate_password" value="{{ client.certificate_password or '' }}" placeholder="Opcional">
+    </div>
+  </div>
+  <div class="field">
+    <label class="label">Token de procuração específico</label>
+    <div class="control">
+      <input class="input" type="text" name="procuracao_token" value="{{ client.procuracao_token or '' }}" placeholder="Opcional">
+    </div>
+  </div>
+  <div class="field is-grouped">
+    <div class="control">
+      <button class="button is-link" type="submit">Salvar alterações</button>
+    </div>
+    <div class="control">
+      <a class="button is-light" href="{{ url_for('client_detail', document=client.document) }}">Cancelar</a>
+    </div>
+  </div>
+</form>
+{% endblock %}

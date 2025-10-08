@@ -1,0 +1,73 @@
+{% extends 'base.html' %}
+{% block title %}{{ client.name }} - Monitor eCAC{% endblock %}
+{% block content %}
+<div class="buttons">
+  <a class="button is-light" href="{{ url_for('index') }}">&larr; Voltar</a>
+  <a class="button is-info" href="{{ url_for('client_events', document=client.document) }}">Histórico de eventos</a>
+  <a class="button is-warning" href="{{ url_for('edit_client', document=client.document) }}">Editar</a>
+  <form action="{{ url_for('run_cycle_for_client', document=client.document) }}" method="post" style="display:inline;">
+    <button class="button is-primary" type="submit" {% if not config_available %}disabled{% endif %}>Rodar ciclo agora</button>
+  </form>
+  <form action="{{ url_for('delete_client', document=client.document) }}" method="post" style="display:inline;" onsubmit="return confirm('Deseja remover este cliente e seu histórico?');">
+    <button class="button is-danger" type="submit">Excluir</button>
+  </form>
+</div>
+<div class="box" style="margin-top:1.5rem;">
+  <h2 class="title is-4">{{ client.name }}</h2>
+  <p><strong>Documento:</strong> {{ client.document }}</p>
+  <p><strong>Tipo:</strong> {{ client.client_type }}</p>
+  <p><strong>Certificado:</strong> {{ client.certificate_path }}</p>
+  <p><strong>Chave:</strong> {{ client.key_path }}</p>
+  <p><strong>Última verificação:</strong> {{ client.last_checked.isoformat() if client.last_checked else 'nunca' }}</p>
+</div>
+{% if status %}
+  {% if status.notifications %}
+    <h3 class="title is-5">Notificações recentes</h3>
+    <table class="table is-fullwidth is-striped">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Conteúdo</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for notif in status.notifications %}
+          <tr>
+            <td>{{ loop.index }}</td>
+            <td><pre>{{ notif | tojson(indent=2) }}</pre></td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% endif %}
+  {% if status.obligations %}
+    <h3 class="title is-5">Obrigações em aberto</h3>
+    <table class="table is-fullwidth is-hoverable">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Detalhes</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for obligation in status.obligations %}
+          <tr>
+            <td>{{ loop.index }}</td>
+            <td><pre>{{ obligation | tojson(indent=2) }}</pre></td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% endif %}
+  {% if status.raw %}
+    <article class="message is-warning">
+      <div class="message-header">Status bruto</div>
+      <div class="message-body">
+        <pre>{{ status.raw }}</pre>
+      </div>
+    </article>
+  {% endif %}
+{% else %}
+  <p>Nenhum status registrado ainda. Execute um ciclo.</p>
+{% endif %}
+{% endblock %}

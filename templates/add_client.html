@@ -1,0 +1,61 @@
+{% extends 'base.html' %}
+{% block title %}Novo cliente - Monitor eCAC{% endblock %}
+{% block content %}
+<form action="{{ url_for('create_client') }}" method="post" class="box">
+  <div class="field">
+    <label class="label">Documento</label>
+    <div class="control">
+      <input class="input" type="text" name="document" required placeholder="CPF ou CNPJ">
+    </div>
+  </div>
+  <div class="field">
+    <label class="label">Nome / Razão Social</label>
+    <div class="control">
+      <input class="input" type="text" name="name" required>
+    </div>
+  </div>
+  <div class="field">
+    <label class="label">Tipo</label>
+    <div class="control">
+      <div class="select">
+        <select name="client_type" required>
+          <option value="PJ">Pessoa Jurídica</option>
+          <option value="PF">Pessoa Física</option>
+        </select>
+      </div>
+    </div>
+  </div>
+  <div class="field">
+    <label class="label">Certificado (PEM)</label>
+    <div class="control">
+      <input class="input" type="text" name="certificate" required placeholder="/caminho/cert.pem">
+    </div>
+  </div>
+  <div class="field">
+    <label class="label">Chave privada (PEM)</label>
+    <div class="control">
+      <input class="input" type="text" name="key" required placeholder="/caminho/key.pem">
+    </div>
+  </div>
+  <div class="field">
+    <label class="label">Senha do certificado</label>
+    <div class="control">
+      <input class="input" type="password" name="certificate_password" placeholder="Opcional">
+    </div>
+  </div>
+  <div class="field">
+    <label class="label">Token de procuração específico</label>
+    <div class="control">
+      <input class="input" type="text" name="procuracao_token" placeholder="Opcional">
+    </div>
+  </div>
+  <div class="field is-grouped">
+    <div class="control">
+      <button class="button is-link" type="submit">Salvar</button>
+    </div>
+    <div class="control">
+      <a class="button is-light" href="{{ url_for('index') }}">Cancelar</a>
+    </div>
+  </div>
+</form>
+{% endblock %}
