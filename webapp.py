@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import os
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Dict, Optional
 
@@ -19,6 +20,7 @@ from flask import (
 from main import (
     AlertDispatcher,
     Client,
+    DashboardMetrics,
     DatabaseManager,
     EcacAPIClient,
     EcacMonitor,
@@ -67,14 +69,90 @@ def create_app() -> Flask:
         except json.JSONDecodeError:
             return {"raw": client.last_status}
 
+    def _format_event(event) -> Dict[str, Any]:
+        payload = event.payload
+        summary = None
+        description = None
+        category = None
+        reference = None
+        if isinstance(payload, dict):
+            for key in ("title", "titulo", "subject", "assunto"):
+                if payload.get(key):
+                    summary = str(payload[key])
+                    break
+            description = (
+                payload.get("description")
+                or payload.get("mensagem")
+                or payload.get("message")
+            )
+            category = payload.get("category") or payload.get("categoria")
+            reference = (
+                payload.get("reference")
+                or payload.get("protocolo")
+                or payload.get("id")
+            )
+        if summary is None:
+            if isinstance(payload, (str, int, float)):
+                summary = str(payload)
+            else:
+                summary = json.dumps(payload, ensure_ascii=False)
+        return {
+            "id": event.id,
+            "client_document": event.client_document,
+            "client_name": getattr(event, "client_name", None),
+            "received_at": event.received_at,
+            "summary": summary,
+            "description": description,
+            "category": category,
+            "reference": reference,
+            "payload": payload,
+        }
+
     @app.get("/")
     def index() -> str:
         clients = db.list_clients()
+        metrics: DashboardMetrics = db.get_dashboard_metrics()
         enriched = []
         for client in clients:
             status = _prepare_status(client)
-            enriched.append({"client": client, "status": status})
-        return render_template("index.html", clients=enriched)
+            notifications = 0
+            obligations = 0
+            if isinstance(status, dict):
+                notifications_field = status.get("notifications") or status.get("avisos")
+                if isinstance(notifications_field, list):
+                    notifications = len(notifications_field)
+                obligations_field = (
+                    status.get("obligations")
+                    or status.get("obrigacoes")
+                    or status.get("obrigações")
+                )
+                if isinstance(obligations_field, list):
+                    obligations = len(obligations_field)
+            enriched.append(
+                {
+                    "client": client,
+                    "status": status,
+                    "notifications": notifications,
+                    "obligations": obligations,
+                }
+            )
+
+        stale_threshold = datetime.utcnow() - timedelta(hours=24)
+        stale_clients = [
+            entry
+            for entry in enriched
+            if not entry["client"].last_checked
+            or entry["client"].last_checked < stale_threshold
+        ]
+        recent_events = [_format_event(event) for event in db.list_events(limit=6)]
+
+        return render_template(
+            "index.html",
+            clients=enriched,
+            metrics=metrics,
+            stale_clients=stale_clients,
+            recent_events=recent_events,
+        )
 
     @app.get("/clients/new")
     def new_client() -> str:
@@ -113,7 +191,35 @@ def create_app() -> Flask:
             flash("Cliente não encontrado", "error")
             return redirect(url_for("index"))
         status = _prepare_status(client)
-        return render_template("client_detail.html", client=client, status=status)
+        notifications = []
+        obligations = []
+        metadata: Dict[str, Any] = {}
+        if isinstance(status, dict):
+            raw_notifications = status.get("notifications") or status.get("avisos")
+            if isinstance(raw_notifications, list):
+                notifications = raw_notifications
+            raw_obligations = (
+                status.get("obligations")
+                or status.get("obrigacoes")
+                or status.get("obrigações")
+            )
+            if isinstance(raw_obligations, list):
+                obligations = raw_obligations
+            meta_candidate = status.get("metadata") or status.get("metadados")
+            if isinstance(meta_candidate, dict):
+                metadata = meta_candidate
+        recent_events = [
+            _format_event(event) for event in db.list_events(document, limit=5)
+        ]
+        return render_template(
+            "client_detail.html",
+            client=client,
+            status=status,
+            notifications=notifications,
+            obligations=obligations,
+            metadata=metadata,
+            recent_events=recent_events,
+        )
 
     @app.post("/run-cycle")
     def run_cycle() -> Response:
@@ -160,12 +266,15 @@ def create_app() -> Flask:
             flash("Parâmetros de paginação inválidos", "error")
             return redirect(url_for("client_events", document=document))
         events = db.list_events(document, limit=limit, offset=offset)
+        formatted_events = [_format_event(event) for event in events]
         return render_template(
             "client_events.html",
             client=client,
-            events=events,
+            events=formatted_events,
             limit=limit,
             offset=offset,
+            next_offset=offset + limit if len(events) == limit else None,
+            prev_offset=offset - limit if offset - limit >= 0 else None,
         )
 
     @app.get("/clients/<document>/edit")

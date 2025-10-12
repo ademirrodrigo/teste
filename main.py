@@ -87,6 +87,20 @@ class EventRecord:
     client_document: str
     payload: Dict[str, Any]
     received_at: datetime
+    client_name: Optional[str] = None
+
+
+@dataclass
+class DashboardMetrics:
+    """Representa indicadores consolidados para o painel web."""
+
+    total_clients: int
+    pj_clients: int
+    pf_clients: int
+    total_events: int
+    clients_with_alerts: int
+    last_check: Optional[datetime]
+    last_event: Optional[datetime]
 
 
 class DatabaseManager:
@@ -255,9 +269,11 @@ class DatabaseManager:
         offset: int = 0,
     ) -> List[EventRecord]:
         query = (
-            "SELECT id, client_document, payload, received_at FROM events"
-            + (" WHERE client_document = ?" if document else "")
-            + " ORDER BY received_at DESC, id DESC LIMIT ? OFFSET ?"
+            "SELECT e.id, e.client_document, e.payload, e.received_at, c.name as client_name "
+            "FROM events e "
+            "LEFT JOIN clients c ON c.document = e.client_document "
+            + ("WHERE e.client_document = ? " if document else "")
+            + "ORDER BY datetime(e.received_at) DESC, e.id DESC LIMIT ? OFFSET ?"
         )
         params: List[Any]
         if document:
@@ -278,9 +294,42 @@ class DatabaseManager:
                     client_document=row["client_document"],
                     payload=payload,
                     received_at=datetime.fromisoformat(row["received_at"]),
+                    client_name=row["client_name"],
                 )
             )
         return events
+
+    def get_dashboard_metrics(self) -> DashboardMetrics:
+        with self._connect() as conn:
+            total_clients = conn.execute("SELECT COUNT(*) FROM clients").fetchone()[0]
+            type_counts = {
+                row["client_type"]: row["count"]
+                for row in conn.execute(
+                    "SELECT client_type, COUNT(*) as count FROM clients GROUP BY client_type"
+                ).fetchall()
+            }
+            last_check_raw = conn.execute("SELECT MAX(last_checked) FROM clients").fetchone()[0]
+            total_events = conn.execute("SELECT COUNT(*) FROM events").fetchone()[0]
+            clients_with_alerts = conn.execute(
+                "SELECT COUNT(DISTINCT client_document) FROM events"
+            ).fetchone()[0]
+            last_event_raw = conn.execute("SELECT MAX(received_at) FROM events").fetchone()[0]
+
+        last_check = (
+            datetime.fromisoformat(last_check_raw) if last_check_raw else None
+        )
+        last_event = (
+            datetime.fromisoformat(last_event_raw) if last_event_raw else None
+        )
+        return DashboardMetrics(
+            total_clients=total_clients,
+            pj_clients=type_counts.get("PJ", 0),
+            pf_clients=type_counts.get("PF", 0),
+            total_events=total_events,
+            clients_with_alerts=clients_with_alerts,
+            last_check=last_check,
+            last_event=last_event,
+        )
 
     def delete_client(self, document: str) -> None:
         with self._connect() as conn:

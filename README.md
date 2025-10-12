@@ -108,7 +108,7 @@ python main.py run --database monitor.db --config monitor_config.json --client 1
 
 ## Interface web
 
-Além da CLI, o repositório inclui um painel web simples (`webapp.py`) para cadastrar clientes e disparar ciclos manuais do monitor.
+Além da CLI, o repositório inclui um painel web completo (`webapp.py`) para cadastrar clientes, visualizar métricas consolidadas e disparar ciclos manuais do monitor.
 
 1. Configure as variáveis de ambiente:
    ```bash
@@ -122,6 +122,14 @@ Além da CLI, o repositório inclui um painel web simples (`webapp.py`) para cad
    ```
 3. Acesse `http://localhost:8000` para visualizar clientes, cadastrar novos, editar registros, remover cadastros, examinar o
    histórico de eventos e executar ciclos sob demanda (globais ou por cliente).
+
+### Recursos disponíveis no painel
+
+- **Dashboard operacional** com contadores de clientes, eventos, últimos ciclos e destaque para clientes que precisam de nova verificação.
+- **Linha do tempo dos eventos** com visualização amigável, filtros de paginação, destaque de categorias/referências e exibição do payload bruto por evento.
+- **Páginas de detalhe** para cada cliente exibindo notificações mais recentes, obrigações, metadados retornados pela API e ações rápidas (rodar ciclo, editar, remover).
+- **Formulários estruturados** para cadastro e edição, incluindo dicas operacionais ao lado dos campos obrigatórios.
+- **Estilo responsivo** baseado em Bulma com personalizações próprias (`static/css/app.css`) para cards, timeline e blocos de informação.
 
 O painel reutiliza o mesmo banco SQLite e respeita as configurações do arquivo JSON. Certifique-se de que o processo tenha acesso
 aos certificados de cada cliente.

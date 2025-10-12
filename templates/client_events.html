@@ -1,42 +1,111 @@
 {% extends 'base.html' %}
 {% block title %}Eventos de {{ client.name }} - Monitor eCAC{% endblock %}
+
+{% block hero %}
+<section class="hero is-link hero-compact">
+  <div class="hero-body">
+    <div class="container">
+      <p class="title">Histórico de eventos</p>
+      <p class="subtitle">{{ client.name }} · {{ client.document }}</p>
+    </div>
+  </div>
+</section>
+{% endblock %}
+
 {% block content %}
-<div class="buttons">
-  <a class="button is-light" href="{{ url_for('client_detail', document=client.document) }}">&larr; Voltar para detalhes</a>
-  <a class="button" href="{{ url_for('client_events', document=client.document, limit=limit, offset=offset) }}">Atualizar</a>
+<div class="columns is-variable is-6">
+  <div class="column is-three-quarters">
+    <div class="details-block">
+      <div class="level">
+        <div class="level-left">
+          <div class="level-item">
+            <h3 class="title is-5">Linha do tempo</h3>
+          </div>
+        </div>
+        <div class="level-right">
+          <div class="buttons are-small">
+            <a class="button is-light" href="{{ url_for('client_detail', document=client.document) }}">&larr; Voltar</a>
+            <a class="button is-info" href="{{ url_for('client_events', document=client.document, limit=limit, offset=offset) }}">Atualizar</a>
+          </div>
+        </div>
+      </div>
+      {% if events %}
+        <div class="timeline">
+          {% for event in events %}
+            <div class="timeline-item">
+              <div class="timeline-marker"></div>
+              <div class="timeline-content">
+                <p class="heading">{{ event.received_at.strftime('%d/%m/%Y %H:%M:%S') }}</p>
+                <p class="title is-5">{{ event.summary }}</p>
+                <div class="tags">
+                  {% if event.category %}
+                    <span class="tag is-info is-light">{{ event.category }}</span>
+                  {% endif %}
+                  {% if event.reference %}
+                    <span class="tag is-light">Ref: {{ event.reference }}</span>
+                  {% endif %}
+                  <span class="tag is-light">ID {{ event.id }}</span>
+                </div>
+                {% if event.description %}
+                  <p style="margin-top: 0.5rem;">{{ event.description }}</p>
+                {% endif %}
+                <details style="margin-top: 1rem;">
+                  <summary>Ver payload bruto</summary>
+                  <div class="payload-preview" style="margin-top: 0.75rem;">
+                    <pre><code>{{ event.payload | tojson(indent=2, ensure_ascii=False) }}</code></pre>
+                  </div>
+                </details>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+        <div class="buttons" style="margin-top: 1.5rem;">
+          {% if prev_offset is not none %}
+            <a class="button" href="{{ url_for('client_events', document=client.document, limit=limit, offset=prev_offset) }}">&larr; Anteriores</a>
+          {% endif %}
+          {% if next_offset is not none %}
+            <a class="button" href="{{ url_for('client_events', document=client.document, limit=limit, offset=next_offset) }}">Próximos &rarr;</a>
+          {% endif %}
+        </div>
+      {% else %}
+        <div class="empty-state">
+          <div>
+            <p class="title is-5">Nenhum evento registrado até o momento.</p>
+            <p class="subtitle is-6">Execute um ciclo de monitoramento para captar novas notificações.</p>
+          </div>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+  <div class="column is-one-quarter">
+    <div class="details-block">
+      <h3 class="title is-6">Configurações de exibição</h3>
+      <form action="{{ url_for('client_events', document=client.document) }}" method="get">
+        <div class="field">
+          <label class="label">Eventos por página</label>
+          <div class="control">
+            <div class="select is-fullwidth">
+              <select name="limit">
+                {% for option in [10, 25, 50, 100] %}
+                  <option value="{{ option }}" {% if option == limit %}selected{% endif %}>{{ option }}</option>
+                {% endfor %}
+              </select>
+            </div>
+          </div>
+        </div>
+        <div class="field">
+          <label class="label">Iniciar em</label>
+          <div class="control">
+            <input class="input" type="number" name="offset" value="{{ offset }}" min="0">
+          </div>
+        </div>
+        <div class="field">
+          <div class="control">
+            <button class="button is-primary is-fullwidth" type="submit">Aplicar filtros</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
 </div>
-<div class="box">
-  <h2 class="title is-4">Histórico de eventos</h2>
-  <p><strong>Cliente:</strong> {{ client.name }} ({{ client.document }})</p>
-</div>
-{% if events %}
-<table class="table is-fullwidth is-striped">
-  <thead>
-    <tr>
-      <th>ID</th>
-      <th>Recebido em</th>
-      <th>Conteúdo</th>
-    </tr>
-  </thead>
-  <tbody>
-    {% for event in events %}
-    <tr>
-      <td>{{ event.id }}</td>
-      <td>{{ event.received_at.isoformat() }}</td>
-      <td><pre>{{ event.payload | tojson(indent=2) }}</pre></td>
-    </tr>
-    {% endfor %}
-  </tbody>
-</table>
-<div class="buttons">
-  {% if offset - limit >= 0 %}
-    <a class="button" href="{{ url_for('client_events', document=client.document, limit=limit, offset=offset - limit) }}">&larr; Anteriores</a>
-  {% endif %}
-  {% if events|length == limit %}
-    <a class="button" href="{{ url_for('client_events', document=client.document, limit=limit, offset=offset + limit) }}">Próximos &rarr;</a>
-  {% endif %}
-</div>
-{% else %}
-  <p>Nenhum evento registrado para este cliente.</p>
-{% endif %}
 {% endblock %}
