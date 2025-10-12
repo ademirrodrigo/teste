@@ -1,0 +1,9 @@
+{
+  "api_base_url": "https://sua-api-interna.exemplo.com",
+  "contador_document": "00000000000",
+  "procuracao_token": "token-gerado-no-ecac-para-o-contador",
+  "poll_interval": 900,
+  "verify_ssl": true,
+  "timeout": 60,
+  "webhook_url": "https://seu-servidor-de-alertas.exemplo.com/ecac"
+}
