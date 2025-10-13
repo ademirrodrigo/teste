@@ -1,7 +1,7 @@
 {
-  "api_base_url": "https://sua-api-interna.exemplo.com",
-  "contador_document": "00000000000",
-  "procuracao_token": "token-gerado-no-ecac-para-o-contador",
+  "api_base_url": "http://localhost:5000",
+  "contador_document": "97121215187",
+  "procuracao_token": "token-padrao-procuracao",
   "poll_interval": 900,
   "verify_ssl": true,
   "timeout": 60,

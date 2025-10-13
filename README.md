@@ -16,14 +16,64 @@ python -m pip install --upgrade pip
 pip install -r requirements.txt
 ```
 
-## Configuração da API
+## Configuração da API proprietária incluída
 
-1. Copie o arquivo de exemplo `monitor_config.example.json` para `monitor_config.json` e edite os valores:
-   - `api_base_url`: URL base da API proprietária (sem barra no final).
-   - `contador_document`: CPF/CNPJ do contador com procuração.
-   - `procuracao_token`: token padrão usado na autorização.
-   - Opcional: `poll_interval`, `verify_ssl`, `timeout`, `webhook_url`.
-2. Garanta que os certificados `.pem` dos clientes que utilizarem o modo por certificado estejam acessíveis no servidor onde o monitor rodará. Para clientes configurados apenas com procuração, assegure que o token padrão ou individual esteja válido.
+O repositório agora acompanha uma API real (`api_server.py`) que atende aos mesmos contratos esperados pelo monitor. Ela armazena clientes, notificações e obrigações em SQLite e valida o acesso por certificado ou pela procuração do contador.
+
+1. Copie `api_config.example.json` para `api_config.json` e defina seus valores reais:
+   - `contador_document`: informe o CPF/CNPJ do contador que assina as procurações (por exemplo, `97121215187`).
+   - `default_procuracao_token`: token padrão emitido no eCAC para o contador.
+   - `access_token_ttl`: tempo de vida (em minutos) dos tokens de acesso emitidos pela API.
+   - `admin_token`: segredo usado para autenticar as rotas administrativas (troque por um valor robusto).
+2. Inicie a API:
+
+   ```bash
+   export API_CONFIG=api_config.json
+   export API_DATABASE=api_data.db
+   python api_server.py
+   ```
+
+3. Cadastre cada cliente autorizado (PJ ou PF). Exemplo usando apenas a procuração do contador:
+
+   ```bash
+   curl -X POST http://localhost:5000/admin/clients \
+     -H "Content-Type: application/json" \
+     -H "X-Admin-Token: SEU_TOKEN_ADMIN" \
+     -d '{
+       "document": "12345678000190",
+       "name": "Empresa Exemplo Ltda",
+       "client_type": "PJ",
+       "procuracao_token": "token-especifico-opcional"
+     }'
+   ```
+
+4. Alimente a API com notificações e obrigações sempre que houver novos dados do eCAC (por integração automática ou operação manual). Exemplos:
+
+   ```bash
+   curl -X POST http://localhost:5000/admin/clients/12345678000190/notifications \
+     -H "Content-Type: application/json" \
+     -H "X-Admin-Token: SEU_TOKEN_ADMIN" \
+     -d '{
+       "notification": {
+         "title": "Mensagem do eCAC",
+         "category": "Avisos",
+         "protocol": "2024-0001"
+       }
+     }'
+
+   curl -X POST http://localhost:5000/admin/clients/12345678000190/obligations \
+     -H "Content-Type: application/json" \
+     -H "X-Admin-Token: SEU_TOKEN_ADMIN" \
+     -d '{
+       "obligations": [
+         {"description": "Entrega DCTF", "due_date": "2024-06-30", "status": "pending"}
+       ]
+     }'
+   ```
+
+5. Atualize `monitor_config.json` (copiado de `monitor_config.example.json`) apontando `api_base_url` para `http://localhost:5000`, definindo o mesmo `contador_document` e o token padrão desejado. Opcionalmente ajuste `poll_interval`, `verify_ssl`, `timeout` e `webhook_url`.
+
+6. Garanta que os certificados `.pem` dos clientes que utilizarem o modo por certificado estejam acessíveis no servidor. Para cadastros que operarão somente com a procuração do contador, basta configurar o token padrão ou individual conforme os passos anteriores.
 
 ## Banco de dados
 
@@ -133,7 +183,7 @@ python main.py run --database monitor.db --config monitor_config.json --client 1
 
 Além da CLI, o repositório inclui um painel web completo (`webapp.py`) para cadastrar clientes, visualizar métricas consolidadas e disparar ciclos manuais do monitor.
 
-1. Configure as variáveis de ambiente:
+1. Configure as variáveis de ambiente (use o mesmo banco e configuração apontados pelo monitor):
    ```bash
    export MONITOR_DATABASE=monitor.db
    export MONITOR_CONFIG=/caminho/para/monitor_config.json
@@ -144,7 +194,8 @@ Além da CLI, o repositório inclui um painel web completo (`webapp.py`) para ca
    python webapp.py
    ```
 3. Acesse `http://localhost:8000` para visualizar clientes, cadastrar novos, editar registros, remover cadastros, examinar o
-   histórico de eventos e executar ciclos sob demanda (globais ou por cliente).
+   histórico de eventos e executar ciclos sob demanda (globais ou por cliente). Caso a página inicial informe que a configuração
+   não foi encontrada, verifique se `MONITOR_CONFIG` aponta para o arquivo correto e que ele está acessível.
 
 ### Recursos disponíveis no painel
 
