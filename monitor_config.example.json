@@ -1,0 +1,9 @@
+{
+  "api_base_url": "http://localhost:5000",
+  "contador_document": "97121215187",
+  "procuracao_token": "token-padrao-procuracao",
+  "poll_interval": 900,
+  "verify_ssl": true,
+  "timeout": 60,
+  "webhook_url": "https://seu-servidor-de-alertas.exemplo.com/ecac"
+}
