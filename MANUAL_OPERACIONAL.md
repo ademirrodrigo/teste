@@ -21,18 +21,22 @@ Este manual descreve, de ponta a ponta, como preparar um ambiente real do monito
    git clone https://seu-servidor/git/monitor-ecac.git .
    ```
 
-## 2. Criação do ambiente virtual e instalação
+## 2. Execução do instalador unificado (Windows e Linux)
 
-1. Crie e ative um `venv` dedicado:
+1. Com o repositório clonado, execute o instalador incluso:
    ```bash
-   python3 -m venv .venv
-   source .venv/bin/activate
+   python install.py
    ```
-2. Atualize `pip` e instale as dependências:
-   ```bash
-   pip install --upgrade pip
-   pip install -r requirements.txt
-   ```
+   - Em Windows, rode o comando em um Prompt/Powershell com Python 3.9+.
+   - Em Linux (ou VPS), utilize o Python do sistema (`python3 install.py`).
+2. O script cria automaticamente o ambiente virtual `.venv`, instala as
+   dependências listadas em `requirements.txt` e gera `monitor_config.json` e
+   `api_config.json` a partir dos modelos.
+3. Ao finalizar, o instalador informa o comando correto para ativar o ambiente
+   virtual e os próximos passos (iniciar a API, painel web e monitor CLI).
+4. Caso precise ajustar algo manualmente, ainda é possível ativar o ambiente
+   com `source .venv/bin/activate` (Linux) ou `.venv\Scripts\activate` (Windows)
+   e reinstalar dependências com `pip install -r requirements.txt`.
 
 ## 3. Configuração inicial dos arquivos
 

@@ -4,19 +4,31 @@ Este repositório contém uma ferramenta CLI em Python para monitorar periodicam
 
 > 📘 Precisa de um roteiro completo? Consulte o [Manual Operacional Passo a Passo](MANUAL_OPERACIONAL.md) para executar um ambiente real utilizando o CPF do contador (ex.: `97121215187`) e/ou certificados das empresas.
 
+## Instalação automatizada (Windows local e VPS Linux)
+
+Execute o instalador único incluído no repositório para preparar o ambiente em
+ambas as plataformas:
+
+```bash
+python install.py
+```
+
+O script cria um ambiente virtual em `.venv`, instala todas as dependências e
+gera automaticamente `monitor_config.json` e `api_config.json` a partir dos
+modelos. Ao final, ele exibe os comandos corretos para ativar o ambiente e
+iniciar a API (`api_server.py`), o painel web (`webapp.py`) e o monitor CLI
+(`main.py`).
+
+Caso precise repetir a instalação em um servidor novo, basta copiar o repositório
+e rodar novamente `python install.py`. Se já existir um ambiente virtual ou
+arquivos de configuração personalizados, eles são preservados.
+
 ## Requisitos
 
 - Python 3.9 ou superior
 - Bibliotecas [`requests`](https://pypi.org/project/requests/) e [`Flask`](https://flask.palletsprojects.com/)
 - Certificados digitais (`.pem`) dos clientes que usarão o modo por certificado e procuração eletrônica ativa para o contador
 - API própria do escritório capaz de autenticar e consultar notificações/obrigações do eCAC
-
-Instale a dependência:
-
-```bash
-python -m pip install --upgrade pip
-pip install -r requirements.txt
-```
 
 ### Preparando o certificado do contador com procurações
 
