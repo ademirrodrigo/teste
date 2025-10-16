@@ -1,0 +1,172 @@
+:root {
+  --primary: #1c7c54;
+  --secondary: #f4f6f8;
+  --accent: #ffd166;
+  --text: #1f2933;
+  --danger: #e63946;
+}
+
+* {
+  box-sizing: border-box;
+  font-family: "Inter", Arial, sans-serif;
+}
+
+body {
+  margin: 0;
+  background: var(--secondary);
+  color: var(--text);
+}
+
+.layout {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 1.5rem;
+}
+
+header {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.subtitle {
+  margin-top: 0.5rem;
+  color: #425466;
+}
+
+.card {
+  background: #fff;
+  border-radius: 16px;
+  padding: 2rem;
+  box-shadow: 0 8px 20px rgba(18, 38, 63, 0.08);
+  margin-bottom: 1.5rem;
+}
+
+.hidden {
+  display: none;
+}
+
+form label {
+  display: block;
+  margin-bottom: 0.25rem;
+  font-weight: 600;
+}
+
+form input {
+  width: 100%;
+  padding: 0.75rem;
+  margin-bottom: 1rem;
+  border-radius: 12px;
+  border: 1px solid #d0d5dd;
+  font-size: 1rem;
+}
+
+button {
+  padding: 0.8rem 1.2rem;
+  border: none;
+  border-radius: 12px;
+  background: var(--primary);
+  color: #fff;
+  font-size: 1rem;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+button:hover {
+  background: #176741;
+}
+
+.feedback {
+  color: var(--danger);
+  min-height: 1.2rem;
+}
+
+.dashboard-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+
+.highlights {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  margin: 1.5rem 0;
+}
+
+.highlight-card {
+  border-radius: 14px;
+  padding: 1rem;
+  background: #f8fafc;
+  border: 1px solid #e5e7eb;
+}
+
+.highlight-card span {
+  display: block;
+}
+
+.highlight-card .value {
+  font-size: 1.4rem;
+  font-weight: 700;
+  margin: 0.5rem 0;
+}
+
+.reports {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 1rem;
+}
+
+.report-card {
+  background: #fff;
+  border-radius: 14px;
+  padding: 1rem;
+  border: 1px solid #e0e7ff;
+  box-shadow: 0 4px 10px rgba(79, 114, 205, 0.08);
+}
+
+.report-card h3 {
+  margin-top: 0;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+table th,
+table td {
+  text-align: left;
+  padding: 0.6rem 0.4rem;
+}
+
+table tbody tr:nth-child(odd) {
+  background: #f1f5f9;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  flex-wrap: wrap;
+  margin: 1.5rem 0;
+}
+
+select {
+  padding: 0.6rem 0.8rem;
+  border-radius: 12px;
+  border: 1px solid #d0d5dd;
+}
+
+footer {
+  text-align: center;
+  color: #64748b;
+  margin-top: 2rem;
+}
+
+@media (max-width: 640px) {
+  .dashboard-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}

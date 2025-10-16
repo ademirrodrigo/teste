@@ -1,3 +1,51 @@
+# BPO Financeiro Simples
+
+O repositório agora inclui um sistema completo para escritórios de contabilidade que desejam oferecer BPO Financeiro aos seus clientes. A solução roda em `localhost`, usa apenas tecnologias gratuitas e foi pensada para ser clara para empresários que não dominam termos contábeis.
+
+## Principais recursos
+
+- **Multiempresa**: cadastre quantas empresas quiser, cada uma com contas bancárias, categorias e usuários próprios.
+- **Perfis de acesso separados**: clientes visualizam apenas os dados da própria empresa, enquanto o escritório possui um painel com visão consolidada.
+- **Importação de extratos**: suporte a arquivos Excel (`.xlsx`), CSV e OFX com classificação automática por palavras-chave.
+- **Relatórios em linguagem simples**: Fluxo de Caixa mensal, resumo de resultado (DRE simplificada), listas de contas a pagar e receber, além de destaques que explicam a situação do negócio.
+- **Exportação**: gere relatórios em PDF ou Excel com um clique.
+- **Interface responsiva**: página única em HTML/CSS/JS que funciona bem em computadores e celulares.
+- **API FastAPI com SQLite**: pronta para receber uma futura migração para PostgreSQL.
+- **Containerização**: Dockerfile e Docker Compose para subir o ambiente rapidamente.
+
+## Como executar com Docker
+
+```bash
+docker compose up --build
+```
+
+O serviço ficará disponível em `http://localhost:8000`. A interface web pode ser acessada em `http://localhost:8000/`.
+
+Credenciais padrão criadas automaticamente na primeira execução:
+
+- Usuário: `admin@bpo.exemplo.com`
+- Senha: `admin123`
+
+Após o login é possível cadastrar empresas, usuários (clientes ou equipe interna), contas bancárias e importar extratos. Para segurança em produção altere a variável de ambiente `BPO_SECRET_KEY`.
+
+## Executando sem Docker
+
+```bash
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+uvicorn bpo_app.main:app --reload
+```
+
+## Estrutura de pastas relevante
+
+- `bpo_app/main.py`: aplicação FastAPI com autenticação por token, rotas de cadastro, importação de extratos e relatórios.
+- `bpo_app/models.py`: modelos do SQLAlchemy prontos para uso com SQLite ou PostgreSQL.
+- `bpo_app/frontend/`: arquivos HTML, CSS e JavaScript da interface amigável para o cliente.
+- `docker-compose.yml` e `Dockerfile`: containerização pronta para desenvolvimento.
+
+> A aplicação legado de monitoramento do eCAC continua disponível abaixo para referência.
+
 # Monitoramento do eCAC
 
 Este repositório contém uma ferramenta CLI em Python para monitorar periodicamente o eCAC para escritórios de contabilidade. Ela autentica usando o certificado digital de cada contribuinte (empresa ou pessoa física) ou, opcionalmente, apenas a procuração eletrônica do contador, consulta uma API proprietária e registra novos eventos em um banco SQLite, disparando alertas via webhook.

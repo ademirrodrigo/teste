@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>BPO Financeiro Simples</title>
+    <link rel="stylesheet" href="/app/styles.css" />
+  </head>
+  <body>
+    <div class="layout">
+      <header>
+        <h1>BPO Financeiro Simples</h1>
+        <p class="subtitle">Painel amigável para acompanhar o caixa e falar com seu contador.</p>
+      </header>
+      <main>
+        <section id="login-section" class="card">
+          <h2>Acesse sua conta</h2>
+          <form id="login-form">
+            <label for="email">E-mail</label>
+            <input type="email" id="email" name="email" placeholder="voce@suaempresa.com" required />
+            <label for="password">Senha</label>
+            <input type="password" id="password" name="password" placeholder="••••••" required />
+            <button type="submit">Entrar</button>
+            <p id="login-error" class="feedback"></p>
+          </form>
+        </section>
+
+        <section id="dashboard" class="card hidden">
+          <div class="dashboard-header">
+            <div>
+              <h2 id="welcome"></h2>
+              <p id="period"></p>
+            </div>
+            <div>
+              <button id="logout">Sair</button>
+            </div>
+          </div>
+          <div class="highlights" id="highlights"></div>
+          <div class="reports">
+            <div class="report-card">
+              <h3>Fluxo de Caixa do período</h3>
+              <table id="cashflow-table">
+                <thead>
+                  <tr>
+                    <th>Mês</th>
+                    <th>Entradas</th>
+                    <th>Saídas</th>
+                    <th>Saldo acumulado</th>
+                  </tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+            </div>
+            <div class="report-card">
+              <h3>Resumo de Resultado</h3>
+              <p id="dre-message"></p>
+              <ul id="dre-values"></ul>
+            </div>
+          </div>
+          <div class="actions">
+            <label for="export-format">Exportar relatório:</label>
+            <select id="export-format">
+              <option value="xlsx">Excel</option>
+              <option value="pdf">PDF</option>
+            </select>
+            <button id="export-report">Baixar</button>
+          </div>
+          <div class="contact card">
+            <h3>Converse com o contador</h3>
+            <p>
+              Precisa de ajuda com um pagamento ou com o planejamento do próximo mês? Use as informações abaixo para avisar o escritório.
+            </p>
+            <ul>
+              <li>E-mail: <strong>atendimento@bpo.local</strong></li>
+              <li>WhatsApp: <strong>(11) 90000-0000</strong></li>
+            </ul>
+          </div>
+        </section>
+      </main>
+      <footer>
+        <p>Feito para deixar o financeiro leve e compreensível.</p>
+      </footer>
+    </div>
+    <script src="/app/main.js"></script>
+  </body>
+</html>
