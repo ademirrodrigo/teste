@@ -37,6 +37,28 @@ pip install -r requirements.txt
 uvicorn bpo_app.main:app --reload
 ```
 
+## Scripts de instalação automatizada
+
+Para simplificar a primeira configuração criamos scripts únicos que preparam o ambiente, instalam as dependências e podem iniciar o servidor imediatamente.
+
+### Windows (PowerShell)
+
+```powershell
+Set-ExecutionPolicy -Scope Process Bypass
+./install_windows.ps1
+```
+
+Use `-SkipRun` para instalar sem iniciar o servidor automaticamente ou ajuste host e porta com `-Host` e `-Port`.
+
+### Linux ou VPS
+
+```bash
+chmod +x install_linux.sh
+./install_linux.sh
+```
+
+No Linux é possível evitar que o script execute o servidor adicionando `--skip-run`. Também é possível definir host e porta com `--host` e `--port`.
+
 ## Estrutura de pastas relevante
 
 - `bpo_app/main.py`: aplicação FastAPI com autenticação por token, rotas de cadastro, importação de extratos e relatórios.
