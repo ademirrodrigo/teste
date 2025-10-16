@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8">
+    <title>{% block title %}Monitor eCAC{% endblock %}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css"
+    >
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
+      integrity="sha512-SzlrxWriC3xO3c6t1QXSf56Z3V1LdgY6sM1U9wNXjwELyhlHLLJoPLD114F8C1ZySb9p8Anynw6L9X9+YxFeg=="
+      crossorigin="anonymous"
+      referrerpolicy="no-referrer"
+    >
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
+  </head>
+  <body>
+    <nav class="navbar is-dark" role="navigation" aria-label="main navigation">
+      <div class="navbar-brand">
+        <a class="navbar-item has-text-weight-semibold" href="{{ url_for('index') }}">
+          <span class="icon-text">
+            <span class="icon">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="22" height="22" fill="currentColor">
+                <path d="M12 3a9 9 0 1 0 9 9 9.01 9.01 0 0 0-9-9Zm0 16a7 7 0 1 1 7-7 7.01 7.01 0 0 1-7 7Zm1-7h3v2h-5V7h2Z" />
+              </svg>
+            </span>
+            <span>Monitor eCAC</span>
+          </span>
+        </a>
+        <a
+          role="button"
+          class="navbar-burger"
+          aria-label="menu"
+          aria-expanded="false"
+          data-target="navbarMain"
+        >
+          <span aria-hidden="true"></span>
+          <span aria-hidden="true"></span>
+          <span aria-hidden="true"></span>
+        </a>
+      </div>
+      <div id="navbarMain" class="navbar-menu">
+        <div class="navbar-start">
+          <a class="navbar-item" href="{{ url_for('index') }}">Painel</a>
+          <a class="navbar-item" href="{{ url_for('new_client') }}">Cadastrar cliente</a>
+        </div>
+        <div class="navbar-end">
+          <div class="navbar-item">
+            {% if config_available %}
+              <span class="tag is-success is-light">
+                Configuração carregada
+              </span>
+            {% else %}
+              <span class="tag is-warning is-light">
+                Configuração não encontrada
+              </span>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </nav>
+
+    {% block hero %}
+    <section class="hero is-primary hero-compact">
+      <div class="hero-body">
+        <div class="container">
+          <p class="title">Monitoramento do eCAC</p>
+          <p class="subtitle">Controle centralizado das notificações fiscais dos clientes.</p>
+        </div>
+      </div>
+    </section>
+    {% endblock %}
+
+    <main class="section">
+      <div class="container">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            <div class="notifications-stack">
+              {% for category, message in messages %}
+                <div class="notification is-{{ 'danger' if category == 'error' else category }}">
+                  {{ message }}
+                </div>
+              {% endfor %}
+            </div>
+          {% endif %}
+        {% endwith %}
+        {% block content %}{% endblock %}
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="content has-text-centered">
+        <p>
+          <strong>Monitor eCAC</strong> — Automação completa para escritórios de contabilidade.
+          Utilize este painel para acompanhar certificados, obrigações e alertas em tempo real.
+        </p>
+      </div>
+    </footer>
+    <script>
+      document.addEventListener('DOMContentLoaded', () => {
+        const burgers = Array.prototype.slice.call(document.querySelectorAll('.navbar-burger'), 0);
+        burgers.forEach((el) => {
+          el.addEventListener('click', () => {
+            const target = el.dataset.target;
+            const $target = document.getElementById(target);
+            el.classList.toggle('is-active');
+            $target.classList.toggle('is-active');
+          });
+        });
+      });
+    </script>
+  </body>
+</html>

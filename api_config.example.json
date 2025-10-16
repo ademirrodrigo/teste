@@ -1,0 +1,6 @@
+{
+  "contador_document": "97121215187",
+  "default_procuracao_token": "token-padrao-procuracao",
+  "access_token_ttl": 120,
+  "admin_token": "troque-este-token-admin"
+}
