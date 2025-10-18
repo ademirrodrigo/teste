@@ -3,6 +3,10 @@
 Este repositório contém uma ferramenta CLI em Python para monitorar periodicamente o eCAC para escritórios de contabilidade. Ela autentica usando o certificado digital de cada contribuinte (empresa ou pessoa física) ou, opcionalmente, apenas a procuração eletrônica do contador, consulta uma API proprietária e registra novos eventos em um banco SQLite, disparando alertas via webhook.
 
 > 📘 Precisa de um roteiro completo? Consulte o [Manual Operacional Passo a Passo](MANUAL_OPERACIONAL.md) para executar um ambiente real utilizando o CPF do contador (ex.: `97121215187`) e/ou certificados das empresas.
+>
+> 🎨 Quer transformar a documentação em uma apresentação estilo Canva? Utilize o [Guia Visual Canva-Style](MANUAL_CANVA.md) com páginas prontas para instalação e uso.
+>
+> 📦 Precisa baixar tudo em ordem? Consulte a [sequência sugerida de arquivos](sequencia_arquivos.txt) antes da implantação.
 
 ## Instalação automatizada (Windows local e VPS Linux)
 
@@ -12,6 +16,12 @@ ambas as plataformas:
 ```bash
 python install.py
 ```
+
+Também estão disponíveis scripts dedicados para cada plataforma que encapsulam
+o comando acima:
+
+- **Windows 11 (PowerShell):** `./scripts/install_windows.ps1`
+- **Linux/VPS:** `bash scripts/install_linux.sh`
 
 O script cria um ambiente virtual em `.venv`, instala todas as dependências e
 gera automaticamente `monitor_config.json` e `api_config.json` a partir dos

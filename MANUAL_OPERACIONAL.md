@@ -27,8 +27,8 @@ Este manual descreve, de ponta a ponta, como preparar um ambiente real do monito
    ```bash
    python install.py
    ```
-   - Em Windows, rode o comando em um Prompt/Powershell com Python 3.9+.
-   - Em Linux (ou VPS), utilize o Python do sistema (`python3 install.py`).
+   - Em Windows, rode o comando em um Prompt/Powershell com Python 3.9+ (ou use o atalho `./scripts/install_windows.ps1`).
+   - Em Linux (ou VPS), utilize o Python do sistema (`python3 install.py`) ou o atalho `bash scripts/install_linux.sh`.
 2. O script cria automaticamente o ambiente virtual `.venv`, instala as
    dependências listadas em `requirements.txt` e gera `monitor_config.json` e
    `api_config.json` a partir dos modelos.

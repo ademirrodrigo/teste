@@ -1,0 +1,67 @@
+================ MONITOR eCAC :: PACOTE DE ARQUIVOS ================
+Ordem sugerida para revisão/importação ao preparar o ambiente completo.
+
+01. README.md
+    Panorama geral do projeto, requisitos e visão rápida das etapas.
+
+02. MANUAL_CANVA.md
+    Roteiro visual para construção do manual estilo Canva de instalação e uso.
+
+03. MANUAL_OPERACIONAL.md
+    Procedimentos detalhados passo a passo para operação real em produção.
+
+04. requirements.txt
+    Dependências Python necessárias para todos os componentes.
+
+05. install.py
+    Instalador unificado base utilizado pelos scripts de Windows e Linux.
+
+06. scripts/install_windows.ps1
+    Script único para Windows 11 – executa install.py automaticamente.
+
+07. scripts/install_linux.sh
+    Script único para VPS/Linux – executa install.py automaticamente.
+
+08. monitor_config.example.json
+    Modelo de configuração do monitor (copiar para monitor_config.json).
+
+09. api_config.example.json
+    Modelo de configuração da API (copiar para api_config.json).
+
+10. api_server.py
+    API própria com autenticação e endpoints administrativos.
+
+11. main.py
+    Monitor CLI responsável pelas rotinas de coleta, cadastro e alertas.
+
+12. webapp.py
+    Painel web Flask para gestão visual dos clientes e eventos.
+
+13. static/css/app.css
+    Estilos personalizados para o painel web.
+
+14. templates/base.html
+    Layout base compartilhado pelo painel.
+
+15. templates/index.html
+    Dashboard principal do painel.
+
+16. templates/add_client.html
+    Formulário de cadastro de clientes.
+
+17. templates/edit_client.html
+    Formulário de edição.
+
+18. templates/client_detail.html
+    Detalhes de cada cliente, métricas e ações.
+
+19. templates/client_events.html
+    Histórico de eventos com linha do tempo.
+
+20. scripts/run_cycle.sh (criar a partir do manual) ou cron – automatização Linux.
+
+21. scripts/run_cycle.ps1 (criar a partir do manual) ou Task Scheduler – automatização Windows.
+
+22. Documentos auxiliares: certificados `.pem`, tokens de procuração e dados API.
+
+=====================================================================
