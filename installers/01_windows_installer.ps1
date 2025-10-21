@@ -30,7 +30,13 @@ function Invoke-Python {
     & $launcher.Command @($launcher.Args + $Args)
 }
 
-$repoRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
+$scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+if (Test-Path (Join-Path $scriptDir "requirements.txt")) {
+    $repoRoot = $scriptDir
+} else {
+    $repoRoot = Split-Path -Parent $scriptDir
+}
+
 $venvPath = Join-Path $repoRoot ".venv"
 
 if (-not (Test-Path $venvPath)) {

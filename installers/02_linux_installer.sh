@@ -8,7 +8,7 @@ PYTHON_BIN=""
 
 usage() {
     cat <<USAGE
-Uso: ./install_linux.sh [opções]
+Uso: ./02_linux_installer.sh [opções]
 
 Opções:
   --host <ip>     Endereço que o servidor irá escutar (padrão: 0.0.0.0)
@@ -54,7 +54,12 @@ else
 fi
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-VENV_PATH="$SCRIPT_DIR/.venv"
+if [[ -f "$SCRIPT_DIR/requirements.txt" ]]; then
+    REPO_ROOT="$SCRIPT_DIR"
+else
+    REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+fi
+VENV_PATH="$REPO_ROOT/.venv"
 
 if [[ ! -d "$VENV_PATH" ]]; then
     echo "[1/3] Criando ambiente virtual em $VENV_PATH"
@@ -70,9 +75,9 @@ echo "[2/3] Atualizando pip"
 pip install --upgrade pip
 
 echo "[3/3] Instalando dependências"
-pip install -r "$SCRIPT_DIR/requirements.txt"
+pip install -r "$REPO_ROOT/requirements.txt"
 
-export PYTHONPATH="$SCRIPT_DIR"
+export PYTHONPATH="$REPO_ROOT"
 
 echo "Banco de dados será criado automaticamente ao iniciar o servidor."
 

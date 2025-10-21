@@ -39,25 +39,36 @@ uvicorn bpo_app.main:app --reload
 
 ## Scripts de instalação automatizada
 
-Para simplificar a primeira configuração criamos scripts únicos que preparam o ambiente, instalam as dependências e podem iniciar o servidor imediatamente.
+Os arquivos estão organizados em `installers/` com numeração sequencial para facilitar o envio direto ao cliente:
 
-### Windows (PowerShell)
+1. `installers/01_windows_installer.ps1`
+2. `installers/02_linux_installer.sh`
+
+Cada script prepara o ambiente, instala dependências e pode iniciar o servidor imediatamente.
+
+### Windows 11 (PowerShell)
 
 ```powershell
 Set-ExecutionPolicy -Scope Process Bypass
-./install_windows.ps1
+cd installers
+./01_windows_installer.ps1
 ```
 
 Use `-SkipRun` para instalar sem iniciar o servidor automaticamente ou ajuste host e porta com `-Host` e `-Port`.
 
-### Linux ou VPS
+### Linux ou VPS Contábil (bash)
 
 ```bash
-chmod +x install_linux.sh
-./install_linux.sh
+cd installers
+chmod +x 02_linux_installer.sh
+./02_linux_installer.sh
 ```
 
 No Linux é possível evitar que o script execute o servidor adicionando `--skip-run`. Também é possível definir host e porta com `--host` e `--port`.
+
+### Manual visual de instalação e uso
+
+Um guia passo a passo em formato de apresentação está disponível em `docs/manual_canva.md`. Ele pode ser compartilhado diretamente com clientes ou importado em ferramentas como Canva para customização visual.
 
 ## Estrutura de pastas relevante
 
