@@ -21,12 +21,17 @@ docker compose up --build
 
 O serviço ficará disponível em `http://localhost:8000`. A interface web pode ser acessada em `http://localhost:8000/`.
 
-Credenciais padrão criadas automaticamente na primeira execução:
+O sistema utiliza variáveis definidas em um arquivo `.env` na raiz do projeto. Os scripts de instalação criam esse arquivo automaticamente com uma chave secreta e credenciais iniciais geradas na hora. Caso esteja configurando manualmente, crie um arquivo `.env` com, por exemplo:
 
-- Usuário: `admin@bpo.exemplo.com`
-- Senha: `admin123`
+```
+BPO_SECRET_KEY=troque-esta-chave
+BPO_ADMIN_EMAIL=admin@bpo.local
+BPO_ADMIN_PASSWORD=uma-senha-bem-segura
+BPO_ADMIN_NAME=Administrador
+# opcional: BPO_DATABASE_URL=sqlite:///./bpo_finance.db
+```
 
-Após o login é possível cadastrar empresas, usuários (clientes ou equipe interna), contas bancárias e importar extratos. Para segurança em produção altere a variável de ambiente `BPO_SECRET_KEY`.
+Na primeira inicialização essas informações criam o usuário administrador. Atualize a senha após o primeiro acesso e utilize valores fortes (principalmente para `BPO_SECRET_KEY`) antes de levar o sistema para produção.
 
 ## Executando sem Docker
 
@@ -36,6 +41,14 @@ source .venv/bin/activate
 pip install -r requirements.txt
 uvicorn bpo_app.main:app --reload
 ```
+
+## Testes automatizados
+
+```bash
+python -m unittest discover
+```
+
+Os testes cobrem o fluxo principal: login, cadastro de empresa, importação de extratos e geração de relatórios.
 
 ## Scripts de instalação automatizada
 
@@ -56,6 +69,8 @@ cd installers
 
 Use `-SkipRun` para instalar sem iniciar o servidor automaticamente ou ajuste host e porta com `-Host` e `-Port`.
 
+O script cria um arquivo `.env` com chave secreta e mostra na tela as credenciais iniciais do administrador.
+
 ### Linux ou VPS Contábil (bash)
 
 ```bash
@@ -65,6 +80,8 @@ chmod +x 02_linux_installer.sh
 ```
 
 No Linux é possível evitar que o script execute o servidor adicionando `--skip-run`. Também é possível definir host e porta com `--host` e `--port`.
+
+Assim como no Windows, o script gera um `.env` com chave secreta e exibe as credenciais iniciais para você guardar.
 
 ### Manual visual de instalação e uso
 

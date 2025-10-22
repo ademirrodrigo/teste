@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime
 from enum import Enum as PyEnum
 from typing import Optional
 
@@ -108,7 +108,7 @@ class Transaction(Base):
     bank_account_id: Mapped[Optional[int]] = mapped_column(
         Integer, ForeignKey("bank_accounts.id"), nullable=True
     )
-    date: Mapped[datetime] = mapped_column(Date, nullable=False)
+    date: Mapped[date] = mapped_column(Date, nullable=False)
     description: Mapped[str] = mapped_column(String(255), nullable=False)
     amount: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False)
     transaction_type: Mapped[TransactionType] = mapped_column(

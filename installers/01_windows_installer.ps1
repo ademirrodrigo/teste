@@ -9,6 +9,14 @@ $ErrorActionPreference = "Stop"
 
 Write-Host "==== Instalação do BPO Financeiro (Windows) ====" -ForegroundColor Cyan
 
+function New-RandomString {
+    param(
+        [int]$Length = 32
+    )
+    $chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%*-_"
+    -join ((1..$Length) | ForEach-Object { $chars[(Get-Random -Maximum $chars.Length)] })
+}
+
 function Get-PythonLauncher {
     $pythonCmd = Get-Command python -ErrorAction SilentlyContinue
     if ($pythonCmd) {
@@ -57,6 +65,27 @@ Write-Host "Atualizando pip" -ForegroundColor Green
 Write-Host "Instalando dependências" -ForegroundColor Green
 $requirements = Join-Path $repoRoot "requirements.txt"
 & $pythonExe -m pip install -r $requirements
+
+$envFile = Join-Path $repoRoot ".env"
+if (-not (Test-Path $envFile)) {
+    $secretKey = New-RandomString -Length 64
+    $adminPassword = New-RandomString -Length 16
+    $adminEmail = "admin@bpo.local"
+    $envContent = @(
+        "BPO_SECRET_KEY=$secretKey",
+        "BPO_ADMIN_EMAIL=$adminEmail",
+        "BPO_ADMIN_PASSWORD=$adminPassword",
+        "BPO_ADMIN_NAME=Administrador"
+    )
+    Set-Content -Path $envFile -Value $envContent -Encoding UTF8
+    Write-Host "Arquivo .env criado em $envFile" -ForegroundColor Green
+    Write-Host "Credenciais iniciais do administrador:" -ForegroundColor Yellow
+    Write-Host "  E-mail: $adminEmail" -ForegroundColor Yellow
+    Write-Host "  Senha:  $adminPassword" -ForegroundColor Yellow
+    Write-Host "Altere esses valores no arquivo .env após o primeiro acesso." -ForegroundColor Yellow
+} else {
+    Write-Host "Arquivo .env já existe. Mantendo configurações atuais." -ForegroundColor Yellow
+}
 
 $env:PYTHONPATH = $repoRoot
 

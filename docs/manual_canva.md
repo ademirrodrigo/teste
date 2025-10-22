@@ -62,14 +62,14 @@
 ## Slide 7 — Instalação Linux (opções extras)
 - `./02_linux_installer.sh --skip-run` para instalar sem iniciar
 - `./02_linux_installer.sh --host 127.0.0.1 --port 9000` para personalizar rede
-- Variável `BPO_SECRET_KEY` pode ser definida antes de iniciar para segurança avançada
+- Os instaladores criam automaticamente um arquivo `.env` com chave secreta e credenciais iniciais (personalize depois do login).
 
 ---
 
 ## Slide 8 — Primeiro acesso do escritório
 - Abra `http://localhost:8000`
-- Login padrão: **admin@bpo.exemplo.com** / **admin123**
-- Atualize a senha em **Configurações > Segurança**
+- Use o e-mail e a senha exibidos pelo instalador (ou definidos no arquivo `.env`).
+- Assim que entrar, troque a senha do administrador em **Configurações > Segurança**.
 - Cadastre o primeiro cliente em **Empresas > Nova Empresa**
 
 ---

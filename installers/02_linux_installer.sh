@@ -77,11 +77,46 @@ pip install --upgrade pip
 echo "[3/3] Instalando dependências"
 pip install -r "$REPO_ROOT/requirements.txt"
 
+create_env_file() {
+    local env_file="$REPO_ROOT/.env"
+    if [[ -f "$env_file" ]]; then
+        echo "Arquivo .env já existe. Mantendo configurações atuais."
+        return
+    fi
+    mapfile -t CREDS < <("$VENV_PATH/bin/python" - <<'PY'
+import secrets
+import string
+
+def build(length: int) -> str:
+    alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%*-_"
+    return ''.join(secrets.choice(alphabet) for _ in range(length))
+
+print(build(64))
+print(build(16))
+PY
+)
+    local secret_key="${CREDS[0]}"
+    local admin_password="${CREDS[1]}"
+    local admin_email="admin@bpo.local"
+    cat > "$env_file" <<ENV
+BPO_SECRET_KEY=$secret_key
+BPO_ADMIN_EMAIL=$admin_email
+BPO_ADMIN_PASSWORD=$admin_password
+BPO_ADMIN_NAME=Administrador
+ENV
+    chmod 600 "$env_file"
+    echo "Arquivo .env criado em $env_file"
+    echo "Credenciais iniciais do administrador:" \
+        "\n  E-mail: $admin_email" \
+        "\n  Senha:  $admin_password"
+    echo "Altere os valores do .env após o primeiro acesso."
+}
+
+create_env_file
+
 export PYTHONPATH="$REPO_ROOT"
 
 echo "Banco de dados será criado automaticamente ao iniciar o servidor."
-
-echo "Para personalizar a chave de segurança, defina a variável BPO_SECRET_KEY antes de iniciar."
 
 if [[ "$RUN_SERVER" -eq 1 ]]; then
     echo "Iniciando servidor em http://$HOST:$PORT"
