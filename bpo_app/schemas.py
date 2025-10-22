@@ -1,7 +1,7 @@
 from datetime import date, datetime
 from typing import Optional
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
 from .models import TransactionType, UserRole
 
@@ -156,8 +156,16 @@ class TokenResponse(BaseModel):
 
 
 class LoginRequest(BaseModel):
-    email: EmailStr
-    password: str
+    email: str = Field(..., min_length=3, description="Endereço de e-mail do usuário")
+    password: str = Field(..., min_length=1, description="Senha de acesso")
+
+    @field_validator("email")
+    @classmethod
+    def normalize_email(cls, value: str) -> str:
+        cleaned = value.strip()
+        if not cleaned:
+            raise ValueError("Informe o e-mail do usuário.")
+        return cleaned.lower()
 
 
 class DashboardHighlight(BaseModel):

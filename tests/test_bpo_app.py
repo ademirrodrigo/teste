@@ -39,6 +39,23 @@ class BPOAppFlowTest(unittest.TestCase):
         token = response.json()["access_token"]
         return {"Authorization": f"Bearer {token}"}
 
+    def test_login_accepts_uppercase_email(self) -> None:
+        response = self.client.post(
+            "/auth/login",
+            json={
+                "email": os.environ["BPO_ADMIN_EMAIL"].upper(),
+                "password": os.environ["BPO_ADMIN_PASSWORD"],
+            },
+        )
+        self.assertEqual(response.status_code, 200, response.text)
+
+    def test_login_with_invalid_email_format_returns_unauthorized(self) -> None:
+        response = self.client.post(
+            "/auth/login",
+            json={"email": "usuario", "password": os.environ["BPO_ADMIN_PASSWORD"]},
+        )
+        self.assertEqual(response.status_code, 401, response.text)
+
     def test_end_to_end_flow(self) -> None:
         headers = self.auth_headers()
 

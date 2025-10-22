@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta
 from typing import Optional
 
+import bcrypt
 import jwt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
@@ -10,6 +11,12 @@ from sqlalchemy.orm import Session
 from .database import get_db
 from .models import User, UserRole
 from .schemas import CurrentUser
+
+if getattr(bcrypt, "__about__", None) is None and hasattr(bcrypt, "__version__"):
+    class _About:  # pragma: no cover - compatibility shim
+        __version__ = bcrypt.__version__  # type: ignore[attr-defined]
+
+    bcrypt.__about__ = _About()  # type: ignore[attr-defined]
 
 SECRET_KEY = "super-secret-placeholder"
 ALGORITHM = "HS256"

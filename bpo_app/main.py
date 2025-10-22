@@ -131,7 +131,8 @@ def root_page() -> str:
 
 @app.post("/auth/login", response_model=TokenResponse)
 def login(request: LoginRequest, db: Session = Depends(get_db)) -> TokenResponse:
-    user = db.query(User).filter(func.lower(User.email) == request.email.lower()).first()
+    email = request.email.strip().lower()
+    user = db.query(User).filter(func.lower(User.email) == email).first()
     if not user or not verify_password(request.password, user.password_hash):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Credenciais inválidas")
 
