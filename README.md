@@ -87,6 +87,16 @@ Assim como no Windows, o script gera um `.env` com chave secreta e exibe as cred
 
 Um guia passo a passo em formato de apresentação está disponível em `docs/manual_canva.md`. Ele pode ser compartilhado diretamente com clientes ou importado em ferramentas como Canva para customização visual.
 
+### Pacote completo para enviar ao cliente
+
+Use o comando abaixo para gerar um arquivo `.zip` com os instaladores, guia rápido, manual visual e arquivos da interface web. O pacote fica disponível em `dist/bpo_instalacao.zip` e pode ser anexado em e-mails ou compartilhado por Drive.
+
+```bash
+python tools/create_install_bundle.py
+```
+
+Se quiser personalizar o destino ou remover a interface web do pacote, consulte `docs/pacote_instalacao.md`.
+
 ## Estrutura de pastas relevante
 
 - `bpo_app/main.py`: aplicação FastAPI com autenticação por token, rotas de cadastro, importação de extratos e relatórios.
