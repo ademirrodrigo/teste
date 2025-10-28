@@ -19,7 +19,7 @@ Sistema completo para coleta automatizada de documentos fiscais eletrônicos (NF
 > ⚠️ **Importante:** As chamadas reais para os serviços da SEFAZ estão comentadas. Para ativá-las basta remover os comentários indicados nos módulos `app/collectors/nfe_dfe.py` e `app/collectors/nfce_html.py`.
 
 ## Pré-requisitos
-- Python 3.11+ (recomendado utilizar Python 3.11 ou 3.12 para garantir wheels pré-compilados do `lxml` em Windows)
+- Python 3.11+ (com Python 3.13 no Windows utilize o `lxml 5.3.x` incluído no `requirements.txt`, que já possui wheels oficiais)
 - Certificados A1 no formato `.pfx` de cada empresa cadastrada
 - Dependências listadas em `requirements.txt`
 
@@ -33,7 +33,7 @@ Sistema completo para coleta automatizada de documentos fiscais eletrônicos (NF
    python -m pip install --upgrade pip
    python -m pip install -r requirements.txt
    ```
-   > 💡 **Windows 11:** Se estiver utilizando Python 3.13, instale previamente o [Microsoft C++ Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/) ou utilize Python 3.11/3.12 para evitar a recompilação manual do `lxml`.
+   > 💡 **Windows 11:** Com Python 3.13 certifique-se de atualizar o `pip` (`python -m pip install --upgrade pip`) para baixar o wheel oficial do `lxml 5.3.x`. Caso utilize versões mais antigas do `lxml`, será necessário instalar o [Microsoft C++ Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/).
 3. Execute o painel Streamlit:
    ```bash
    python -m streamlit run web/app.py --server.port $PORTA
