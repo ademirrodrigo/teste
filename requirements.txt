@@ -1,2 +1,9 @@
-requests>=2.31.0
-Flask>=2.3.0
+streamlit==1.36.0
+sqlalchemy==2.0.30
+python-dotenv==1.0.1
+requests==2.31.0
+requests-pkcs12==1.15
+zeep==4.2.1
+beautifulsoup4==4.12.3
+# LXML 5.3.x oferece wheels para Python 3.13 no Windows, evitando compilações manuais
+lxml==5.3.2
