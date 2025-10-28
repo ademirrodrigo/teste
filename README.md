@@ -9,7 +9,7 @@ O repositório agora inclui um sistema completo para escritórios de contabilida
 - **Importação de extratos**: suporte a arquivos Excel (`.xlsx`), CSV e OFX com classificação automática por palavras-chave.
 - **Relatórios em linguagem simples**: Fluxo de Caixa mensal, resumo de resultado (DRE simplificada), listas de contas a pagar e receber, além de destaques que explicam a situação do negócio.
 - **Exportação**: gere relatórios em PDF ou Excel com um clique.
-- **Interface responsiva**: página única em HTML/CSS/JS que funciona bem em computadores e celulares.
+- **Interface responsiva**: painel renovado com seleção de período, gráfico interativo de fluxo de caixa e listas amigáveis de contas a pagar e receber que funcionam bem em computadores e celulares.
 - **API FastAPI com SQLite**: pronta para receber uma futura migração para PostgreSQL.
 - **Containerização**: Dockerfile e Docker Compose para subir o ambiente rapidamente.
 
