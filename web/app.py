@@ -4,12 +4,19 @@ from __future__ import annotations
 
 import os
 import sys
+from pathlib import Path
 from typing import List
 
 import streamlit as st
 
-# O Streamlit executa este arquivo como "app", o que conflita com o pacote backend.
-# Removemos a referência conflitante antes de importar o pacote correto.
+# O Streamlit executa este arquivo como "app" dentro da pasta "web". Inserimos o
+# diretório raiz do projeto no início do sys.path para garantir que o pacote
+# backend ``app`` seja encontrado antes deste módulo homônimo.
+PROJETO_RAIZ = Path(__file__).resolve().parents[1]
+if str(PROJETO_RAIZ) not in sys.path:
+    sys.path.insert(0, str(PROJETO_RAIZ))
+
+# Também removemos a referência conflitante se ela apontar para este arquivo.
 if sys.modules.get("app") and getattr(sys.modules["app"], "__file__", None) == __file__:
     del sys.modules["app"]
 
