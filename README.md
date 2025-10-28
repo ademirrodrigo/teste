@@ -10,6 +10,7 @@ O repositório agora inclui um sistema completo para escritórios de contabilida
 - **Relatórios em linguagem simples**: Fluxo de Caixa mensal, resumo de resultado (DRE simplificada), listas de contas a pagar e receber, além de destaques que explicam a situação do negócio.
 - **Exportação**: gere relatórios em PDF ou Excel com um clique.
 - **Interface responsiva**: painel renovado com seleção de período, gráfico interativo de fluxo de caixa e listas amigáveis de contas a pagar e receber que funcionam bem em computadores e celulares.
+- **Centro de configurações**: menu moderno para o escritório administrar empresas, usuários, contas bancárias, categorias, lançamentos e importações em um único lugar.
 - **API FastAPI com SQLite**: pronta para receber uma futura migração para PostgreSQL.
 - **Containerização**: Dockerfile e Docker Compose para subir o ambiente rapidamente.
 

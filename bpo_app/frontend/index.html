@@ -29,6 +29,9 @@
           </div>
         </div>
         <div class="top-actions hidden" id="top-actions">
+          <button id="open-config" class="ghost-button hidden" title="Abrir configurações">
+            <span>Configurações</span>
+          </button>
           <button id="quick-export" class="ghost-button" title="Baixar relatório">
             <span>Exportar</span>
           </button>
@@ -174,6 +177,273 @@
       <footer class="footer">
         <p>Feito para deixar o financeiro leve, transparente e conectado ao seu contador.</p>
       </footer>
+    </div>
+
+    <div class="config-layer hidden" id="config-layer" aria-hidden="true">
+      <div class="config-container" role="dialog" aria-modal="true" aria-labelledby="config-title">
+        <div class="config-header">
+          <div>
+            <h2 id="config-title">Centro de Configurações</h2>
+            <p class="muted">Gerencie cadastros, lançamentos e importações do BPO.</p>
+          </div>
+          <button id="close-config" class="ghost-button">Fechar</button>
+        </div>
+        <div class="config-focus" id="config-focus">
+          <label for="config-company-focus">Empresa em foco</label>
+          <select id="config-company-focus"></select>
+        </div>
+        <div class="config-body">
+          <nav class="config-menu" id="config-menu">
+            <button class="active" data-tab="overview">Visão geral</button>
+            <button data-tab="companies">Empresas</button>
+            <button data-tab="users">Usuários</button>
+            <button data-tab="accounts">Contas bancárias</button>
+            <button data-tab="categories">Categorias</button>
+            <button data-tab="transactions">Lançamentos</button>
+            <button data-tab="imports">Importações</button>
+          </nav>
+          <div class="config-panels">
+            <section class="config-panel active" data-panel="overview">
+              <div class="config-panel-header">
+                <h3>Resumo do escritório</h3>
+                <p class="muted">Acompanhe rapidamente como está a base de cadastros.</p>
+              </div>
+              <div class="config-stats">
+                <article class="config-stat">
+                  <span class="config-stat-value" id="overview-companies-count">0</span>
+                  <span class="config-stat-label">Empresas ativas</span>
+                </article>
+                <article class="config-stat">
+                  <span class="config-stat-value" id="overview-users-count">0</span>
+                  <span class="config-stat-label">Usuários cadastrados</span>
+                </article>
+                <article class="config-stat">
+                  <span class="config-stat-value" id="overview-accounts-count">0</span>
+                  <span class="config-stat-label">Contas bancárias</span>
+                </article>
+                <article class="config-stat">
+                  <span class="config-stat-value" id="overview-categories-count">0</span>
+                  <span class="config-stat-label">Categorias criadas</span>
+                </article>
+              </div>
+              <div class="config-hints">
+                <div class="hint-card">
+                  <h4>Como usar</h4>
+                  <p>Escolha uma empresa para visualizar contas, categorias, lançamentos e importar extratos.</p>
+                </div>
+                <div class="hint-card">
+                  <h4>Dica rápida</h4>
+                  <p>Mantenha pelo menos uma categoria de recebimentos e uma de pagamentos para melhorar os relatórios.</p>
+                </div>
+              </div>
+            </section>
+
+            <section class="config-panel" data-panel="companies">
+              <div class="config-panel-header">
+                <h3>Empresas</h3>
+                <p class="muted">Cadastre novos clientes e mantenha seus dados atualizados.</p>
+              </div>
+              <div class="config-columns">
+                <div class="config-column">
+                  <ul id="config-company-list" class="config-list"></ul>
+                </div>
+                <form id="config-company-form" class="config-form">
+                  <h4 id="config-company-form-title">Nova empresa</h4>
+                  <label>Nome da empresa
+                    <input type="text" id="config-company-name" name="name" required />
+                  </label>
+                  <label>Nome fantasia
+                    <input type="text" id="config-company-trade" name="trade_name" />
+                  </label>
+                  <label>CNPJ ou CPF
+                    <input type="text" id="config-company-document" name="document" />
+                  </label>
+                  <label>Notas internas
+                    <textarea id="config-company-notes" name="notes" rows="3"></textarea>
+                  </label>
+                  <div class="form-actions">
+                    <button type="submit" class="primary-button">Salvar</button>
+                    <button type="button" id="config-company-cancel" class="ghost-button small hidden">Cancelar edição</button>
+                  </div>
+                  <p id="config-company-feedback" class="config-feedback"></p>
+                </form>
+              </div>
+            </section>
+
+            <section class="config-panel" data-panel="users">
+              <div class="config-panel-header">
+                <h3>Usuários</h3>
+                <p class="muted">Convide sua equipe e clientes para usar o painel.</p>
+              </div>
+              <div class="config-columns">
+                <div class="config-column">
+                  <ul id="config-user-list" class="config-list"></ul>
+                </div>
+                <form id="config-user-form" class="config-form">
+                  <h4 id="config-user-form-title">Novo usuário</h4>
+                  <label>Nome completo
+                    <input type="text" id="config-user-name" required />
+                  </label>
+                  <label>E-mail
+                    <input type="email" id="config-user-email" required />
+                  </label>
+                  <label>Perfil de acesso
+                    <select id="config-user-role" required>
+                      <option value="admin">Administrador</option>
+                      <option value="staff">Equipe interna</option>
+                      <option value="client">Cliente</option>
+                    </select>
+                  </label>
+                  <label>Empresa vinculada
+                    <select id="config-user-company"></select>
+                  </label>
+                  <label>Senha (mínimo 6 caracteres)
+                    <input type="password" id="config-user-password" minlength="6" />
+                  </label>
+                  <label>
+                    <input type="checkbox" id="config-user-active" checked /> Usuário ativo
+                  </label>
+                  <div class="form-actions">
+                    <button type="submit" class="primary-button">Salvar usuário</button>
+                    <button type="button" id="config-user-cancel" class="ghost-button small hidden">Cancelar edição</button>
+                  </div>
+                  <p id="config-user-feedback" class="config-feedback"></p>
+                </form>
+              </div>
+            </section>
+
+            <section class="config-panel" data-panel="accounts">
+              <div class="config-panel-header">
+                <h3>Contas bancárias</h3>
+                <p class="muted">Cadastre contas para separar entradas e saídas de cada empresa.</p>
+              </div>
+              <div class="config-columns">
+                <div class="config-column">
+                  <ul id="config-account-list" class="config-list"></ul>
+                </div>
+                <form id="config-account-form" class="config-form">
+                  <h4>Criar conta bancária</h4>
+                  <label>Nome da conta
+                    <input type="text" id="config-account-name" required />
+                  </label>
+                  <label>Banco
+                    <input type="text" id="config-account-bank" />
+                  </label>
+                  <label>Número da conta
+                    <input type="text" id="config-account-number" />
+                  </label>
+                  <label>Saldo inicial
+                    <input type="number" step="0.01" id="config-account-balance" value="0" />
+                  </label>
+                  <div class="form-actions">
+                    <button type="submit" class="primary-button">Adicionar conta</button>
+                  </div>
+                  <p id="config-account-feedback" class="config-feedback"></p>
+                </form>
+              </div>
+            </section>
+
+            <section class="config-panel" data-panel="categories">
+              <div class="config-panel-header">
+                <h3>Categorias</h3>
+                <p class="muted">Organize entradas e saídas com palavras-chave para classificação automática.</p>
+              </div>
+              <div class="config-columns">
+                <div class="config-column">
+                  <ul id="config-category-list" class="config-list"></ul>
+                </div>
+                <form id="config-category-form" class="config-form">
+                  <h4>Nova categoria</h4>
+                  <label>Nome da categoria
+                    <input type="text" id="config-category-name" required />
+                  </label>
+                  <label>Palavras-chave (separe por vírgula)
+                    <input type="text" id="config-category-keywords" placeholder="mensalidade, assinatura" />
+                  </label>
+                  <label>Cor opcional
+                    <input type="color" id="config-category-color" value="#1f7a8c" />
+                  </label>
+                  <div class="form-actions">
+                    <button type="submit" class="primary-button">Salvar categoria</button>
+                  </div>
+                  <p id="config-category-feedback" class="config-feedback"></p>
+                </form>
+              </div>
+            </section>
+
+            <section class="config-panel" data-panel="transactions">
+              <div class="config-panel-header">
+                <h3>Lançamentos manuais</h3>
+                <p class="muted">Registre entradas e saídas que não vieram do extrato.</p>
+              </div>
+              <div class="config-columns">
+                <div class="config-column">
+                  <table class="config-table">
+                    <thead>
+                      <tr>
+                        <th>Data</th>
+                        <th>Descrição</th>
+                        <th>Tipo</th>
+                        <th>Valor</th>
+                        <th>Categoria</th>
+                      </tr>
+                    </thead>
+                    <tbody id="config-transaction-list"></tbody>
+                  </table>
+                </div>
+                <form id="config-transaction-form" class="config-form">
+                  <h4>Novo lançamento</h4>
+                  <label>Data
+                    <input type="date" id="config-transaction-date" required />
+                  </label>
+                  <label>Descrição
+                    <input type="text" id="config-transaction-description" required />
+                  </label>
+                  <label>Valor
+                    <input type="number" step="0.01" id="config-transaction-amount" required />
+                  </label>
+                  <label>Tipo
+                    <select id="config-transaction-type" required>
+                      <option value="inflow">Entrada</option>
+                      <option value="outflow">Saída</option>
+                    </select>
+                  </label>
+                  <label>Conta bancária
+                    <select id="config-transaction-account"></select>
+                  </label>
+                  <label>Categoria
+                    <select id="config-transaction-category"></select>
+                  </label>
+                  <label>Observações
+                    <textarea id="config-transaction-notes" rows="2"></textarea>
+                  </label>
+                  <div class="form-actions">
+                    <button type="submit" class="primary-button">Registrar</button>
+                  </div>
+                  <p id="config-transaction-feedback" class="config-feedback"></p>
+                </form>
+              </div>
+            </section>
+
+            <section class="config-panel" data-panel="imports">
+              <div class="config-panel-header">
+                <h3>Importação de extratos</h3>
+                <p class="muted">Carregue arquivos CSV, Excel ou OFX para acelerar o registro de lançamentos.</p>
+              </div>
+              <form id="config-import-form" class="config-form single">
+                <label>Selecione o arquivo do banco
+                  <input type="file" id="config-import-file" accept=".csv,.xls,.xlsx,.ofx" required />
+                </label>
+                <p class="muted small">Certifique-se de que a coluna de data esteja no formato dia/mês/ano ou ano-mês-dia.</p>
+                <div class="form-actions">
+                  <button type="submit" class="primary-button">Importar extrato</button>
+                </div>
+                <p id="config-import-feedback" class="config-feedback"></p>
+              </form>
+            </section>
+          </div>
+        </div>
+      </div>
     </div>
 
     <script src="/app/main.js"></script>
