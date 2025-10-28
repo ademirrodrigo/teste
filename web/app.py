@@ -3,9 +3,15 @@
 from __future__ import annotations
 
 import os
+import sys
 from typing import List
 
 import streamlit as st
+
+# O Streamlit executa este arquivo como "app", o que conflita com o pacote backend.
+# Removemos a referência conflitante antes de importar o pacote correto.
+if sys.modules.get("app") and getattr(sys.modules["app"], "__file__", None) == __file__:
+    del sys.modules["app"]
 
 from app import init_db
 from app.config import settings
