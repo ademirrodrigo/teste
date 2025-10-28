@@ -16,9 +16,11 @@ PROJETO_RAIZ = Path(__file__).resolve().parents[1]
 if str(PROJETO_RAIZ) not in sys.path:
     sys.path.insert(0, str(PROJETO_RAIZ))
 
-# Também removemos a referência conflitante se ela apontar para este arquivo.
-if sys.modules.get("app") and getattr(sys.modules["app"], "__file__", None) == __file__:
-    del sys.modules["app"]
+# Também removemos qualquer referência pré-existente para "app" em sys.modules
+# antes de tentar carregar o pacote backend. Isso evita que o Python reutilize a
+# instância parcialmente inicializada deste próprio arquivo, o que levava a
+# importações recursivas.
+sys.modules.pop("app", None)
 
 from app import init_db
 from app.config import settings
