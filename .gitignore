@@ -1,0 +1,17 @@
+# Ambientes e arquivos sensíveis
+.venv/
+.env
+__pycache__/
+*.pyc
+
+# Dados coletados
+certs/*.pfx
+data/xmls/*
+!data/xmls/.gitkeep
+data/html/*
+!data/html/.gitkeep
+logs/*
+!logs/.gitkeep
+
+# Artefatos diversos
+.DS_Store
