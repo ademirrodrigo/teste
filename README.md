@@ -1,3 +1,112 @@
+# BPO Financeiro Simples
+
+O repositório agora inclui um sistema completo para escritórios de contabilidade que desejam oferecer BPO Financeiro aos seus clientes. A solução roda em `localhost`, usa apenas tecnologias gratuitas e foi pensada para ser clara para empresários que não dominam termos contábeis.
+
+## Principais recursos
+
+- **Multiempresa**: cadastre quantas empresas quiser, cada uma com contas bancárias, categorias e usuários próprios.
+- **Perfis de acesso separados**: clientes visualizam apenas os dados da própria empresa, enquanto o escritório possui um painel com visão consolidada.
+- **Importação de extratos**: suporte a arquivos Excel (`.xlsx`), CSV e OFX com classificação automática por palavras-chave.
+- **Relatórios em linguagem simples**: Fluxo de Caixa mensal, resumo de resultado (DRE simplificada), listas de contas a pagar e receber, além de destaques que explicam a situação do negócio.
+- **Exportação**: gere relatórios em PDF ou Excel com um clique.
+- **Interface responsiva**: painel renovado com seleção de período, gráfico interativo de fluxo de caixa e listas amigáveis de contas a pagar e receber que funcionam bem em computadores e celulares.
+- **Centro de configurações**: menu moderno para o escritório administrar empresas, usuários, contas bancárias, categorias, lançamentos e importações em um único lugar.
+- **API FastAPI com SQLite**: pronta para receber uma futura migração para PostgreSQL.
+- **Containerização**: Dockerfile e Docker Compose para subir o ambiente rapidamente.
+
+## Como executar com Docker
+
+```bash
+docker compose up --build
+```
+
+O serviço ficará disponível em `http://localhost:8000`. A interface web pode ser acessada em `http://localhost:8000/`.
+
+O sistema utiliza variáveis definidas em um arquivo `.env` na raiz do projeto. Os scripts de instalação criam esse arquivo automaticamente com uma chave secreta e credenciais iniciais geradas na hora. Caso esteja configurando manualmente, crie um arquivo `.env` com, por exemplo:
+
+```
+BPO_SECRET_KEY=troque-esta-chave
+BPO_ADMIN_EMAIL=admin@bpo.local
+BPO_ADMIN_PASSWORD=uma-senha-bem-segura
+BPO_ADMIN_NAME=Administrador
+# opcional: BPO_DATABASE_URL=sqlite:///./bpo_finance.db
+```
+
+Na primeira inicialização essas informações criam o usuário administrador. Atualize a senha após o primeiro acesso e utilize valores fortes (principalmente para `BPO_SECRET_KEY`) antes de levar o sistema para produção.
+
+## Executando sem Docker
+
+```bash
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+uvicorn bpo_app.main:app --reload
+```
+
+## Testes automatizados
+
+```bash
+python -m unittest discover
+```
+
+Os testes cobrem o fluxo principal: login, cadastro de empresa, importação de extratos e geração de relatórios.
+
+## Scripts de instalação automatizada
+
+Os arquivos estão organizados em `installers/` com numeração sequencial para facilitar o envio direto ao cliente:
+
+1. `installers/01_windows_installer.ps1`
+2. `installers/02_linux_installer.sh`
+
+Cada script prepara o ambiente, instala dependências e pode iniciar o servidor imediatamente.
+
+### Windows 11 (PowerShell)
+
+```powershell
+Set-ExecutionPolicy -Scope Process Bypass
+cd installers
+./01_windows_installer.ps1
+```
+
+Use `-SkipRun` para instalar sem iniciar o servidor automaticamente ou ajuste host e porta com `-Host` e `-Port`.
+
+O script cria um arquivo `.env` com chave secreta e mostra na tela as credenciais iniciais do administrador.
+
+### Linux ou VPS Contábil (bash)
+
+```bash
+cd installers
+chmod +x 02_linux_installer.sh
+./02_linux_installer.sh
+```
+
+No Linux é possível evitar que o script execute o servidor adicionando `--skip-run`. Também é possível definir host e porta com `--host` e `--port`.
+
+Assim como no Windows, o script gera um `.env` com chave secreta e exibe as credenciais iniciais para você guardar.
+
+### Manual visual de instalação e uso
+
+Um guia passo a passo em formato de apresentação está disponível em `docs/manual_canva.md`. Ele pode ser compartilhado diretamente com clientes ou importado em ferramentas como Canva para customização visual.
+
+### Pacote completo para enviar ao cliente
+
+Use o comando abaixo para gerar um arquivo `.zip` com os instaladores, guia rápido, manual visual e arquivos da interface web. O pacote fica disponível em `dist/bpo_instalacao.zip` e pode ser anexado em e-mails ou compartilhado por Drive.
+
+```bash
+python tools/create_install_bundle.py
+```
+
+Se quiser personalizar o destino ou remover a interface web do pacote, consulte `docs/pacote_instalacao.md`.
+
+## Estrutura de pastas relevante
+
+- `bpo_app/main.py`: aplicação FastAPI com autenticação por token, rotas de cadastro, importação de extratos e relatórios.
+- `bpo_app/models.py`: modelos do SQLAlchemy prontos para uso com SQLite ou PostgreSQL.
+- `bpo_app/frontend/`: arquivos HTML, CSS e JavaScript da interface amigável para o cliente.
+- `docker-compose.yml` e `Dockerfile`: containerização pronta para desenvolvimento.
+
+> A aplicação legado de monitoramento do eCAC continua disponível abaixo para referência.
+
 # Monitoramento do eCAC
 
 Este repositório contém uma ferramenta CLI em Python para monitorar periodicamente o eCAC para escritórios de contabilidade. Ela autentica usando o certificado digital de cada contribuinte (empresa ou pessoa física) ou, opcionalmente, apenas a procuração eletrônica do contador, consulta uma API proprietária e registra novos eventos em um banco SQLite, disparando alertas via webhook.
