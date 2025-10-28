@@ -1,223 +1,104 @@
-# Monitoramento do eCAC
+# Coletor Fiscal v3.2 SaaS-Ready
 
-Este repositório contém uma ferramenta CLI em Python para monitorar periodicamente o eCAC para escritórios de contabilidade. Ela autentica usando o certificado digital de cada contribuinte (empresa ou pessoa física) ou, opcionalmente, apenas a procuração eletrônica do contador, consulta uma API proprietária e registra novos eventos em um banco SQLite, disparando alertas via webhook.
+Plataforma para coleta automatizada de documentos fiscais eletrônicos (NF-e e NFC-e) com backend Python, banco SQLite e painel Streamlit. A versão v3.2 foi reconstruída para operar de forma consistente em contêineres Docker, mantendo scripts auxiliares para instalações tradicionais.
+
+## Visão Geral
+- **Backend:** Python + SQLAlchemy + SQLite
+- **Painel:** Streamlit executando na porta 8501
+- **Coletas:**
+  - NF-e via WebService `NFeDistribuicaoDFe` (integração real pronta e comentada)
+  - NFC-e via raspagem pública no portal da SEFAZ-GO (requisições comentadas por padrão)
+- **Estrutura de pastas:**
+  - `app/`: serviços, models e utilitários
+  - `web/`: aplicativo Streamlit com login, cadastro de empresas e orquestração da coleta
+  - `certs/`: certificados digitais A1 (`CNPJ.pfx`)
+  - `data/xmls` e `data/html`: armazenamento dos documentos coletados
+  - `logs/`: registros de execução
+
+> ⚠️ **Integrações reais**: Toda chamada direta à SEFAZ permanece comentada. Basta remover os comentários sinalizados nos módulos de coleta para ativar os fluxos produtivos.
 
 ## Requisitos
+- Docker 24+ e Docker Compose Plugin (recomendado)
+- Certificados A1 (arquivo `.pfx`) para cada empresa cadastrada
+- Para instalação manual: Python 3.11+ com `pip`
 
-- Python 3.9 ou superior
-- Bibliotecas [`requests`](https://pypi.org/project/requests/) e [`Flask`](https://flask.palletsprojects.com/)
-- Certificados digitais (`.pem`) dos clientes que usarão o modo por certificado e procuração eletrônica ativa para o contador
-- API própria do escritório capaz de autenticar e consultar notificações/obrigações do eCAC
+## Configuração do Ambiente
+1. Duplique `.env.example` para `.env` e ajuste as variáveis desejadas.
+2. Garanta que as pastas `certs/`, `data/xmls`, `data/html` e `logs/` estejam criadas (o sistema fará isso automaticamente ao iniciar).
 
-Instale a dependência:
+Variáveis principais disponíveis no `.env`:
 
+| Variável | Descrição |
+| --- | --- |
+| `PORTA` | Porta exposta do Streamlit (default `8501`) |
+| `STREAMLIT_ADDRESS` | Endereço de bind do servidor (default `0.0.0.0`) |
+| `WEB_USER` / `WEB_PASS` | Credenciais básicas do painel |
+| `DATABASE_URL` | URL alternativa para o banco (caso não queira o SQLite padrão) |
+
+## Execução com Docker (recomendado)
 ```bash
-python -m pip install --upgrade pip
-pip install -r requirements.txt
+docker compose up -d --build
 ```
 
-## Configuração da API proprietária incluída
+O serviço ficará disponível em `http://localhost:8501` (ou na porta configurada em `PORTA`). Os volumes montados garantem persistência local dos certificados, XMLs/HTML e logs.
 
-O repositório agora acompanha uma API real (`api_server.py`) que atende aos mesmos contratos esperados pelo monitor. Ela armazena clientes, notificações e obrigações em SQLite e valida o acesso por certificado ou pela procuração do contador.
-
-1. Copie `api_config.example.json` para `api_config.json` e defina seus valores reais:
-   - `contador_document`: informe o CPF/CNPJ do contador que assina as procurações (por exemplo, `97121215187`).
-   - `default_procuracao_token`: token padrão emitido no eCAC para o contador.
-   - `access_token_ttl`: tempo de vida (em minutos) dos tokens de acesso emitidos pela API.
-   - `admin_token`: segredo usado para autenticar as rotas administrativas (troque por um valor robusto).
-2. Inicie a API:
-
-   ```bash
-   export API_CONFIG=api_config.json
-   export API_DATABASE=api_data.db
-   python api_server.py
-   ```
-
-3. Cadastre cada cliente autorizado (PJ ou PF). Exemplo usando apenas a procuração do contador:
-
-   ```bash
-   curl -X POST http://localhost:5000/admin/clients \
-     -H "Content-Type: application/json" \
-     -H "X-Admin-Token: SEU_TOKEN_ADMIN" \
-     -d '{
-       "document": "12345678000190",
-       "name": "Empresa Exemplo Ltda",
-       "client_type": "PJ",
-       "procuracao_token": "token-especifico-opcional"
-     }'
-   ```
-
-4. Alimente a API com notificações e obrigações sempre que houver novos dados do eCAC (por integração automática ou operação manual). Exemplos:
-
-   ```bash
-   curl -X POST http://localhost:5000/admin/clients/12345678000190/notifications \
-     -H "Content-Type: application/json" \
-     -H "X-Admin-Token: SEU_TOKEN_ADMIN" \
-     -d '{
-       "notification": {
-         "title": "Mensagem do eCAC",
-         "category": "Avisos",
-         "protocol": "2024-0001"
-       }
-     }'
-
-   curl -X POST http://localhost:5000/admin/clients/12345678000190/obligations \
-     -H "Content-Type: application/json" \
-     -H "X-Admin-Token: SEU_TOKEN_ADMIN" \
-     -d '{
-       "obligations": [
-         {"description": "Entrega DCTF", "due_date": "2024-06-30", "status": "pending"}
-       ]
-     }'
-   ```
-
-5. Atualize `monitor_config.json` (copiado de `monitor_config.example.json`) apontando `api_base_url` para `http://localhost:5000`, definindo o mesmo `contador_document` e o token padrão desejado. Opcionalmente ajuste `poll_interval`, `verify_ssl`, `timeout` e `webhook_url`.
-
-6. Garanta que os certificados `.pem` dos clientes que utilizarem o modo por certificado estejam acessíveis no servidor. Para cadastros que operarão somente com a procuração do contador, basta configurar o token padrão ou individual conforme os passos anteriores.
-
-## Banco de dados
-
-O monitor cria automaticamente o arquivo SQLite definido por `--database` (padrão `monitor.db`) com as tabelas `clients` e `events`. Faça backup periódico desse arquivo se precisar de histórico.
-
-## Cadastro de clientes
-
-Utilize o comando `add-client` para registrar cada contribuinte, escolhendo o modo de autenticação mais adequado ao cenário.
-
-### Exemplo com certificado do contribuinte
-
+Para interromper:
 ```bash
-python main.py add-client \
-  --database monitor.db \
-  12345678000190 "Empresa Exemplo Ltda" PJ \
-  /caminho/certificados/empresa.pem \
-  /caminho/certificados/empresa-key.pem \
-  --certificate-password "senhaOpcional" \
-  --procuracao-token "tokenOpcional"
+docker compose down
 ```
 
-### Exemplo usando apenas a procuração do contador
-
+### Atualização no Docker
 ```bash
-python main.py add-client \
-  --database monitor.db \
-  98765432100 "Contribuinte via Procuração" PF \
-  --auth-mode procuracao \
-  --procuracao-token "tokenEspecificoOpcional"
+docker compose pull
+docker compose up -d --build
 ```
 
-No modo `procuracao`, os campos de certificado e chave são opcionais e podem ser omitidos. Se nenhum token específico for informado, o sistema utilizará o valor padrão configurado em `monitor_config.json`.
-
-Para listar os clientes cadastrados:
-
-```bash
-python main.py list-clients --database monitor.db
-```
-
-### Atualização, remoção e status de clientes
-
-- Atualize informações (nome, tipo, caminhos de arquivos ou credenciais específicas):
-
-  ```bash
-  python main.py update-client \
-    --database monitor.db \
-    12345678000190 \
-    --name "Empresa Nova" \
-    --certificate /novo/caminho/cert.pem \
-    --key /novo/caminho/key.pem
-  ```
-
-  Para alternar o modo de autenticação para o uso exclusivo da procuração, execute:
-
-  ```bash
-  python main.py update-client \
-    --database monitor.db \
-    12345678000190 \
-    --auth-mode procuracao
-  ```
-
-- Remova um cliente (os eventos associados também são excluídos):
-
-  ```bash
-  python main.py delete-client --database monitor.db 12345678000190
-  ```
-
-- Consulte o último status consolidado retornado pela API:
-
-  ```bash
-  python main.py show-status --database monitor.db 12345678000190
-  ```
-
-- Liste eventos registrados, com suporte a filtros e paginação simples:
-
-  ```bash
-  python main.py list-events --database monitor.db --document 12345678000190 --limit 20
-  ```
-
-## Execução do monitoramento
-
-### Execução contínua
-
-Para rodar continuamente (modo daemon simples), use:
+## Instalação Manual (Linux)
+Os scripts originais continuam disponíveis para quem preferir instalações tradicionais.
 
 ```bash
-python main.py run --database monitor.db --config monitor_config.json
+./install.sh        # cria .venv, instala dependências e configura systemd
+./update.sh         # atualiza o código e reinicia o serviço
+./uninstall.sh      # remove o serviço e opcionalmente o ambiente virtual
 ```
 
-O processo fica em loop consultando a API a cada `poll_interval` segundos, atualizando o banco e enviando alertas para o webhook (quando configurado).
+> Antes de rodar `install.sh`, certifique-se de definir as variáveis necessárias em `.env`.
 
-### Execução de ciclo único
+## Instalação Manual (Windows)
+Scripts `.bat` mantidos para conveniência:
 
-Se quiser executar apenas um ciclo (por exemplo, em uma pipeline agendada ou cron job), adicione `--once`:
+- `install.bat`: configuração padrão com ambiente virtual
+- `force_install.bat`: reinstalação completa do ambiente virtual
+- `start.bat`: inicializa o painel Streamlit (modo manual)
+- `verify.bat`: valida versões de Python, dependências e compilação do código
 
+## Operação do Painel
+1. Acesse o painel e faça login com `WEB_USER`/`WEB_PASS`.
+2. Cadastre as empresas informando **Nome**, **CNPJ**, **UF** e **Senha do certificado**.
+3. Posicione o certificado em `certs/<CNPJ>.pfx`.
+4. Informe, se desejar, chaves de NFC-e (uma por linha).
+5. Clique em **🔄 Coletar Agora**.
+6. Os documentos ficam registrados no SQLite e armazenados nas pastas `data/xmls/<CNPJ>/` e `data/html/<CNPJ>/`.
+
+## Ativando Integrações Reais
+- **NF-e (WebService):** Habilite o trecho comentado em `app/collectors/nfe_dfe.py` para usar `requests_pkcs12` + `zeep` contra o endpoint oficial da SEFAZ. Ajuste o `tpAmb`, `cUFAutor` e endpoints conforme o ambiente.
+- **NFC-e (Scraping):** Ative o bloco comentado em `app/collectors/nfce_html.py` que realiza o GET na consulta pública da SEFAZ-GO e persiste o HTML retornado.
+
+Certifique-se de que os certificados, permissões de rede e configurações de proxy estejam corretos antes de rodar em produção.
+
+## Estrutura do Código
+- `app/models.py`: modelos `Empresa` e `Documento` com SQLAlchemy
+- `app/services/coleta.py`: orquestra as rotinas de coleta
+- `app/utils/`: utilitários para certificados, CNPJ e logging
+- `web/app.py`: painel Streamlit com autenticação, seleção de empresa e gatilho de coleta
+
+## Testes Rápidos
+Para garantir que o código está sintaticamente correto:
 ```bash
-python main.py run --database monitor.db --config monitor_config.json --once
+python -m compileall app web
 ```
 
-Para executar o ciclo apenas para um cliente específico (útil em fluxos manuais ou integrações), informe `--client`:
+No Docker o comando pode ser executado via `docker compose run --rm coletor python -m compileall app web`.
 
-```bash
-python main.py run --database monitor.db --config monitor_config.json --client 12345678000190
-```
-
-## Interface web
-
-Além da CLI, o repositório inclui um painel web completo (`webapp.py`) para cadastrar clientes, visualizar métricas consolidadas e disparar ciclos manuais do monitor.
-
-1. Configure as variáveis de ambiente (use o mesmo banco e configuração apontados pelo monitor):
-   ```bash
-   export MONITOR_DATABASE=monitor.db
-   export MONITOR_CONFIG=/caminho/para/monitor_config.json
-   export FLASK_SECRET_KEY="uma-string-aleatoria"
-   ```
-2. Inicie o servidor:
-   ```bash
-   python webapp.py
-   ```
-3. Acesse `http://localhost:8000` para visualizar clientes, cadastrar novos, editar registros, remover cadastros, examinar o
-   histórico de eventos e executar ciclos sob demanda (globais ou por cliente). Caso a página inicial informe que a configuração
-   não foi encontrada, verifique se `MONITOR_CONFIG` aponta para o arquivo correto e que ele está acessível.
-
-### Recursos disponíveis no painel
-
-- **Dashboard operacional** com contadores de clientes, eventos, últimos ciclos e destaque para clientes que precisam de nova verificação.
-- **Linha do tempo dos eventos** com visualização amigável, filtros de paginação, destaque de categorias/referências e exibição do payload bruto por evento.
-- **Páginas de detalhe** para cada cliente exibindo notificações mais recentes, obrigações, metadados retornados pela API e ações rápidas (rodar ciclo, editar, remover).
-- **Formulários estruturados** para cadastro e edição, incluindo seleção do modo de autenticação e dicas operacionais ao lado dos campos obrigatórios.
-- **Estilo responsivo** baseado em Bulma com personalizações próprias (`static/css/app.css`) para cards, timeline e blocos de informação.
-
-O painel reutiliza o mesmo banco SQLite e respeita as configurações do arquivo JSON. Certifique-se de que o processo tenha acesso
-aos certificados dos clientes que utilizarem esse modo e aos tokens de procuração necessários.
-
-## Logs e observabilidade
-
-Os logs são enviados para `stdout` com nível `INFO` por padrão. Para aumentar a verbosidade, ajuste a variável de ambiente `PYTHONLOGLEVEL` ou modifique `logging.basicConfig` em `main.py`.
-
-## Deploy sugerido
-
-- Configure um serviço do sistema (ex.: `systemd`) para iniciar o comando contínuo após o boot.
-- Armazene os certificados (quando aplicável) em diretório protegido e mantenha os tokens de procuração em local seguro, com permissões restritas ao usuário que executa o monitor.
-- Utilize `venv` dedicado para isolar as dependências Python.
-
-## Suporte
-
-Em caso de dúvidas, entre em contato com o time responsável pela API proprietária ou adapte o código para atender às particularidades do seu escritório.
+---
+Sistema pronto para operação segura em VPS Ubuntu, Windows 11 ou ambientes Docker orquestrados.
