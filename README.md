@@ -36,9 +36,12 @@ Sistema completo para coleta automatizada de documentos fiscais eletrônicos (NF
    > 💡 **Windows 11:** Com Python 3.13 certifique-se de atualizar o `pip` (`python -m pip install --upgrade pip`) para baixar o wheel oficial do `lxml 5.3.x`. Caso utilize versões mais antigas do `lxml`, será necessário instalar o [Microsoft C++ Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/).
 3. Execute o painel Streamlit:
    ```bash
-   python -m streamlit run web/app.py --server.port $PORTA
+   python -m streamlit run web/app.py --server.port 8501
    ```
-   - No PowerShell utilize `$env:PORTA=8501` para definir a porta antes de executar o comando.
+   - Para alterar a porta, defina a variável de ambiente antes de executar o comando e use a sintaxe correta do seu shell:
+     - **PowerShell:** ` $env:PORTA=8502 ; python -m streamlit run web/app.py --server.port $env:PORTA`
+     - **Prompt (cmd.exe):** `set PORTA=8502 && python -m streamlit run web/app.py --server.port %PORTA%`
+   - Ao informar a porta diretamente, utilize apenas o número (`8501`) sem o prefixo `$`.
 4. Acesse `http://localhost:8501` (ou a porta configurada) e faça login com as credenciais definidas nas variáveis `WEB_USER` e `WEB_PASS`.
 
 ## Cadastro de Empresas
