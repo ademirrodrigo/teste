@@ -19,7 +19,7 @@ Sistema completo para coleta automatizada de documentos fiscais eletrônicos (NF
 > ⚠️ **Importante:** As chamadas reais para os serviços da SEFAZ estão comentadas. Para ativá-las basta remover os comentários indicados nos módulos `app/collectors/nfe_dfe.py` e `app/collectors/nfce_html.py`.
 
 ## Pré-requisitos
-- Python 3.11+
+- Python 3.11+ (recomendado utilizar Python 3.11 ou 3.12 para garantir wheels pré-compilados do `lxml` em Windows)
 - Certificados A1 no formato `.pfx` de cada empresa cadastrada
 - Dependências listadas em `requirements.txt`
 
@@ -28,14 +28,17 @@ Sistema completo para coleta automatizada de documentos fiscais eletrônicos (NF
 2. Instale as dependências utilizando um ambiente virtual:
    ```bash
    python -m venv .venv
-   source .venv/bin/activate  # Linux/macOS
-   .venv\Scripts\activate     # Windows
-   pip install -r requirements.txt
+   source .venv/bin/activate          # Linux/macOS
+   .\.venv\Scripts\Activate.ps1      # Windows (PowerShell)
+   python -m pip install --upgrade pip
+   python -m pip install -r requirements.txt
    ```
+   > 💡 **Windows 11:** Se estiver utilizando Python 3.13, instale previamente o [Microsoft C++ Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/) ou utilize Python 3.11/3.12 para evitar a recompilação manual do `lxml`.
 3. Execute o painel Streamlit:
    ```bash
-   streamlit run web/app.py --server.port $PORTA
+   python -m streamlit run web/app.py --server.port $PORTA
    ```
+   - No PowerShell utilize `$env:PORTA=8501` para definir a porta antes de executar o comando.
 4. Acesse `http://localhost:8501` (ou a porta configurada) e faça login com as credenciais definidas nas variáveis `WEB_USER` e `WEB_PASS`.
 
 ## Cadastro de Empresas
