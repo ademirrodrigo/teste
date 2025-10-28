@@ -1,0 +1,14 @@
+version: "3.9"
+
+services:
+  coletor:
+    build: .
+    container_name: coletor-fiscal
+    env_file: .env
+    ports:
+      - "${PORTA:-8501}:8501"
+    volumes:
+      - ./data:/app/data
+      - ./logs:/app/logs
+      - ./certs:/app/certs
+    restart: unless-stopped
