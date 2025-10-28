@@ -51,22 +51,24 @@ def carregar_empresas() -> List[Empresa]:
 
 
 def salvar_empresa(nome: str, cnpj: str, uf: str, senha_cert: str | None = None) -> None:
+    nome_limpo = nome.strip()
+    if not nome_limpo:
+        raise ValueError("Informe o nome fantasia da empresa.")
+
     with session_scope() as session:
         existente = session.query(Empresa).filter_by(cnpj=cnpj).one_or_none()
         if existente:
             raise ValueError("Empresa com este CNPJ já cadastrada.")
 
-        empresa = Empresa(nome=nome, cnpj=cnpj, uf=uf, certificado_senha=senha_cert)
+        empresa = Empresa(nome=nome_limpo, cnpj=cnpj, uf=uf, certificado_senha=senha_cert)
         session.add(empresa)
-        session.commit()
-        LOGGER.info("Empresa %s cadastrada", nome)
+        LOGGER.info("Empresa %s cadastrada", nome_limpo)
 
 
 def executar_coletas(empresa: Empresa, chaves_nfce: list[str]) -> dict[str, int]:
     with session_scope() as session:
         empresa_refrescada = session.query(Empresa).filter_by(id=empresa.id).one()
         resultado = coletar_todos(session, empresa_refrescada, chaves_nfce)
-        session.commit()
         return resultado
 
 
