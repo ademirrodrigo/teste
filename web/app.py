@@ -13,16 +13,15 @@ import streamlit as st
 # ``app``. Isso conflita com o pacote backend ``app``. Normalizamos o
 # ``sys.path`` e removemos o módulo carregado incorretamente para apontar para o
 # pacote correto.
-FRONTEND_DIR = Path(__file__).parent
+FRONTEND_DIR = Path(__file__).resolve().parent
 PROJECT_ROOT = FRONTEND_DIR.parent
 
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-existing_app_module = sys.modules.get("app")
-if existing_app_module and getattr(existing_app_module, "__file__", None):
-    if Path(existing_app_module.__file__).parent == FRONTEND_DIR:
-        del sys.modules["app"]
+# Independente de como o Streamlit registra o script, removemos a chave ``app``
+# para garantir que o pacote backend verdadeiro seja carregado em seguida.
+sys.modules.pop("app", None)
 
 # Após normalizar o caminho garantimos que as importações usem o backend real.
 from app.config import settings  # type: ignore  # noqa: E402
