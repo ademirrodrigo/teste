@@ -214,3 +214,49 @@ class CurrentUser(BaseModel):
 
 class SimpleMessage(BaseModel):
     message: str
+
+
+class NFSeCallRequest(BaseModel):
+    nfse_cabec_msg: str = Field(..., min_length=1, description="XML do cabeçalho da requisição NFSe")
+    nfse_dados_msg: str = Field(..., min_length=1, description="XML com os dados da requisição NFSe")
+    wsdl_url: Optional[str] = Field(
+        None,
+        description="URL completa do WSDL para sobrescrever a configuração padrão (opcional)",
+    )
+    service_url: Optional[str] = Field(
+        None,
+        description="Endpoint completo do serviço SOAP quando diferente do WSDL (opcional)",
+    )
+    timeout: Optional[int] = Field(
+        None,
+        ge=1,
+        le=600,
+        description="Tempo máximo de espera pela resposta do serviço, em segundos (opcional)",
+    )
+    verify_ssl: Optional[bool] = Field(
+        None,
+        description="Define se a verificação de certificado SSL deve ser forçada ou não (opcional)",
+    )
+
+    @field_validator("nfse_cabec_msg", "nfse_dados_msg")
+    @classmethod
+    def ensure_not_blank(cls, value: str) -> str:
+        cleaned = value.strip()
+        if not cleaned:
+            raise ValueError("Informe o conteúdo XML da mensagem NFSe.")
+        return cleaned
+
+    @field_validator("wsdl_url", "service_url")
+    @classmethod
+    def normalize_optional_urls(cls, value: Optional[str]) -> Optional[str]:
+        if value is None:
+            return None
+        cleaned = value.strip()
+        return cleaned or None
+
+    def has_overrides(self) -> bool:
+        return any(value is not None for value in (self.wsdl_url, self.service_url, self.timeout, self.verify_ssl))
+
+
+class NFSeCallResponse(BaseModel):
+    output_xml: str = Field(..., description="XML devolvido pelo serviço NFSe")

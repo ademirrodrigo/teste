@@ -142,6 +142,42 @@ class BPOAppFlowTest(unittest.TestCase):
         highlights = dashboard_resp.json()
         self.assertTrue(any(item["title"] for item in highlights))
 
+    def test_nfse_route_uses_stubbed_client(self) -> None:
+        headers = self.auth_headers()
+
+        calls: list[tuple[str, str, str]] = []
+
+        class StubClient:
+            async def call_operation(self, operation: str, cabec: str, dados: str) -> str:
+                calls.append((operation, cabec, dados))
+                return "<xml-retorno />"
+
+        original_resolver = main.resolve_nfse_client
+
+        def fake_resolver(config, use_cache: bool = True):
+            self.assertEqual(config.wsdl_url, "http://nfse.example/wsdl")
+            self.assertEqual(config.service_url, "http://nfse.example/nfse.asmx")
+            return StubClient()
+
+        main.resolve_nfse_client = fake_resolver  # type: ignore[assignment]
+        try:
+            response = self.client.post(
+                "/integrations/nfse/ConsultarNfsePorRps",
+                headers=headers,
+                json={
+                    "nfse_cabec_msg": "<cabecalho />",
+                    "nfse_dados_msg": "<dados />",
+                    "wsdl_url": "http://nfse.example/wsdl",
+                    "service_url": "http://nfse.example/nfse.asmx",
+                },
+            )
+        finally:
+            main.resolve_nfse_client = original_resolver  # type: ignore[assignment]
+
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertEqual(response.json()["output_xml"], "<xml-retorno />")
+        self.assertEqual(calls[0][0], "ConsultarNfsePorRps")
+
 
 if __name__ == "__main__":
     unittest.main()

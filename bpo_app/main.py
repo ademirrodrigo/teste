@@ -36,6 +36,13 @@ from .models import (
     User,
     UserRole,
 )
+from .nfse_client import (
+    NFSeClient,
+    NFSeClientConfig,
+    NFSeConfigurationError,
+    NFSeOperationError,
+    NFSeServiceError,
+)
 from .schemas import (
     BankAccountCreate,
     BankAccountRead,
@@ -52,6 +59,8 @@ from .schemas import (
     DashboardHighlight,
     FinancialHealthReport,
     LoginRequest,
+    NFSeCallRequest,
+    NFSeCallResponse,
     OutstandingEntry,
     SimpleMessage,
     TokenResponse,
@@ -68,6 +77,32 @@ from .settings import get_settings
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
+_nfse_client: Optional[NFSeClient] = None
+_nfse_config: Optional[NFSeClientConfig] = None
+
+
+def _build_nfse_config(payload: NFSeCallRequest) -> Optional[NFSeClientConfig]:
+    wsdl_url = payload.wsdl_url or settings.nfse_wsdl_url
+    if not wsdl_url:
+        return None
+    timeout = payload.timeout or settings.nfse_timeout
+    verify_ssl = payload.verify_ssl if payload.verify_ssl is not None else settings.nfse_verify_ssl
+    return NFSeClientConfig(
+        wsdl_url=wsdl_url,
+        service_url=payload.service_url or settings.nfse_service_url,
+        timeout=timeout,
+        verify_ssl=verify_ssl,
+    )
+
+
+def resolve_nfse_client(config: NFSeClientConfig, use_cache: bool = True) -> NFSeClient:
+    global _nfse_client, _nfse_config
+    if not use_cache:
+        return NFSeClient(config)
+    if _nfse_client is None or _nfse_config != config:
+        _nfse_client = NFSeClient(config)
+        _nfse_config = config
+    return _nfse_client
 
 app = FastAPI(title="BPO Financeiro Simples", version="1.0.0")
 
@@ -710,3 +745,27 @@ def dashboard_overview(
         ),
     ]
     return highlights
+
+
+@app.post("/integrations/nfse/{operation}", response_model=NFSeCallResponse)
+async def trigger_nfse_operation(
+    operation: str,
+    payload: NFSeCallRequest,
+    _: CurrentUser = Depends(require_role(UserRole.ADMIN, UserRole.STAFF)),
+) -> NFSeCallResponse:
+    config = _build_nfse_config(payload)
+    if config is None:
+        raise HTTPException(status_code=503, detail="Integração NFSe não está configurada.")
+
+    client = resolve_nfse_client(config, use_cache=not payload.has_overrides())
+
+    try:
+        output_xml = await client.call_operation(operation, payload.nfse_cabec_msg, payload.nfse_dados_msg)
+    except NFSeOperationError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except NFSeConfigurationError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    except NFSeServiceError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+
+    return NFSeCallResponse(output_xml=output_xml)

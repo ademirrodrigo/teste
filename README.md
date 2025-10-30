@@ -11,6 +11,7 @@ O repositório agora inclui um sistema completo para escritórios de contabilida
 - **Exportação**: gere relatórios em PDF ou Excel com um clique.
 - **Interface responsiva**: painel renovado com seleção de período, gráfico interativo de fluxo de caixa e listas amigáveis de contas a pagar e receber que funcionam bem em computadores e celulares.
 - **Centro de configurações**: menu moderno para o escritório administrar empresas, usuários, contas bancárias, categorias, lançamentos e importações em um único lugar.
+- **Integração NFSe (ABRASF)**: envie XMLs para os principais serviços SOAP (consulta, cancelamento, geração etc.) direto do painel administrativo.
 - **API FastAPI com SQLite**: pronta para receber uma futura migração para PostgreSQL.
 - **Containerização**: Dockerfile e Docker Compose para subir o ambiente rapidamente.
 
@@ -30,6 +31,11 @@ BPO_ADMIN_EMAIL=admin@bpo.local
 BPO_ADMIN_PASSWORD=uma-senha-bem-segura
 BPO_ADMIN_NAME=Administrador
 # opcional: BPO_DATABASE_URL=sqlite:///./bpo_finance.db
+# integração NFSe (preencha se desejar acionar os serviços SOAP)
+# BPO_NFSE_WSDL_URL=https://exemplo.prefeitura.gov.br/nfse?wsdl
+# BPO_NFSE_SERVICE_URL=https://exemplo.prefeitura.gov.br/nfse.asmx
+# BPO_NFSE_TIMEOUT=45
+# BPO_NFSE_VERIFY_SSL=true
 ```
 
 Na primeira inicialização essas informações criam o usuário administrador. Atualize a senha após o primeiro acesso e utilize valores fortes (principalmente para `BPO_SECRET_KEY`) antes de levar o sistema para produção.
@@ -97,6 +103,26 @@ python tools/create_install_bundle.py
 ```
 
 Se quiser personalizar o destino ou remover a interface web do pacote, consulte `docs/pacote_instalacao.md`.
+
+### Integração NFSe (ABRASF)
+
+O backend expõe a rota `POST /integrations/nfse/{operacao}` para enviar XMLs aos serviços padronizados pelo layout ABRASF. Informe o nome da operação (por exemplo, `ConsultarNfsePorRps`, `GerarNfse` ou `CancelarNfse`) e envie um JSON com o XML do cabeçalho (`nfse_cabec_msg`) e dos dados (`nfse_dados_msg`). Opcionalmente é possível sobrescrever a URL do WSDL, o endpoint do serviço, timeout e a verificação de certificado.
+
+Exemplo de chamada:
+
+```bash
+curl -X POST "http://localhost:8000/integrations/nfse/ConsultarNfsePorRps" \
+  -H "Authorization: Bearer <TOKEN_DO_ADMIN>" \
+  -H "Content-Type: application/json" \
+  -d '{
+        "nfse_cabec_msg": "<cabecalho>...</cabecalho>",
+        "nfse_dados_msg": "<dados>...</dados>",
+        "wsdl_url": "https://exemplo.prefeitura.gov.br/nfse?wsdl",
+        "service_url": "https://exemplo.prefeitura.gov.br/nfse.asmx"
+      }'
+```
+
+Se nenhum valor for enviado para `wsdl_url` ou `service_url`, o sistema utiliza as configurações definidas no `.env`. Apenas administradores ou membros da equipe interna (perfil `staff`) podem acionar essa integração.
 
 ## Estrutura de pastas relevante
 

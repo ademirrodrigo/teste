@@ -6,6 +6,27 @@ from pathlib import Path
 from typing import Optional
 
 
+def _parse_bool(value: Optional[str], default: bool) -> bool:
+    if value is None:
+        return default
+    lowered = value.strip().lower()
+    if lowered in {"1", "true", "on", "yes"}:
+        return True
+    if lowered in {"0", "false", "off", "no"}:
+        return False
+    return default
+
+
+def _parse_int(value: Optional[str], default: int) -> int:
+    if value is None:
+        return default
+    try:
+        parsed = int(value)
+    except (TypeError, ValueError):
+        return default
+    return parsed if parsed > 0 else default
+
+
 def _load_env_file() -> None:
     """Populate environment variables from a local .env file if present."""
     env_path = Path(__file__).resolve().parent.parent / ".env"
@@ -32,6 +53,10 @@ class Settings:
     admin_email: str
     admin_password: str
     admin_name: str
+    nfse_wsdl_url: Optional[str]
+    nfse_service_url: Optional[str]
+    nfse_timeout: int
+    nfse_verify_ssl: bool
 
     @classmethod
     def from_env(cls) -> "Settings":
@@ -41,6 +66,10 @@ class Settings:
             admin_email=os.getenv("BPO_ADMIN_EMAIL", "admin@bpo.exemplo.com"),
             admin_password=os.getenv("BPO_ADMIN_PASSWORD", "admin123"),
             admin_name=os.getenv("BPO_ADMIN_NAME", "Administrador"),
+            nfse_wsdl_url=os.getenv("BPO_NFSE_WSDL_URL"),
+            nfse_service_url=os.getenv("BPO_NFSE_SERVICE_URL"),
+            nfse_timeout=_parse_int(os.getenv("BPO_NFSE_TIMEOUT"), 30),
+            nfse_verify_ssl=_parse_bool(os.getenv("BPO_NFSE_VERIFY_SSL"), True),
         )
 
 
