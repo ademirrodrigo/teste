@@ -106,7 +106,7 @@ Se quiser personalizar o destino ou remover a interface web do pacote, consulte 
 
 ### Integração NFSe (ABRASF)
 
-O backend expõe a rota `POST /integrations/nfse/{operacao}` para enviar XMLs aos serviços padronizados pelo layout ABRASF. Informe o nome da operação (por exemplo, `ConsultarNfsePorRps`, `GerarNfse` ou `CancelarNfse`) e envie um JSON com o XML do cabeçalho (`nfse_cabec_msg`) e dos dados (`nfse_dados_msg`). Opcionalmente é possível sobrescrever a URL do WSDL, o endpoint do serviço, timeout e a verificação de certificado.
+O backend expõe a rota `POST /integrations/nfse/{operacao}` para enviar XMLs aos serviços padronizados pelo layout ABRASF. Informe o nome da operação (por exemplo, `ConsultarNfsePorRps`, `GerarNfse` ou `CancelarNfse`) e envie um JSON com o XML do cabeçalho (`nfse_cabec_msg`) e dos dados (`nfse_dados_msg`). Opcionalmente é possível sobrescrever a URL do WSDL, o endpoint do serviço, timeout e a verificação de certificado. Endereços relativos como `nfse.asmx` também são aceitos: o sistema combina automaticamente com a origem do WSDL, exatamente como em muitos modelos municipais.
 
 Exemplo de chamada:
 

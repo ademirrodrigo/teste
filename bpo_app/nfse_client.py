@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 from dataclasses import dataclass
 from typing import Optional
+from urllib.parse import urljoin, urlparse
 
 from requests import Session
 from zeep import Client, Settings as ZeepSettings
@@ -56,7 +57,11 @@ class NFSeClientConfig:
         if not self.wsdl_url:
             raise ValueError("O endereço WSDL do serviço NFSe é obrigatório.")
         if self.service_url:
-            self.service_url = self.service_url.strip() or None
+            cleaned = self.service_url.strip()
+            if cleaned:
+                self.service_url = _normalize_address(self.wsdl_url, cleaned)
+            else:
+                self.service_url = None
         if self.timeout <= 0:
             self.timeout = 30
 
@@ -81,9 +86,8 @@ class NFSeClient:
     def _get_service(self):
         client = self._get_client()
         address = self.config.service_url or client.service._binding_options.get("address")
-        if not address:
-            raise NFSeConfigurationError("Endereço do serviço NFSe não foi informado no WSDL.")
-        return client.create_service(NFSE_NAMESPACE, address)
+        normalized = _normalize_address(self.config.wsdl_url, address)
+        return client.create_service(NFSE_NAMESPACE, normalized)
 
     async def call_operation(self, operation: str, cabec_msg: str, dados_msg: str) -> str:
         op_name = (operation or "").strip()
@@ -125,6 +129,18 @@ def _extract_output_xml(response: object) -> str:
     if output is not None:
         return str(output)
     return str(response)
+
+
+def _normalize_address(wsdl_url: str, address: Optional[str]) -> str:
+    if not address:
+        raise NFSeConfigurationError("Endereço do serviço NFSe não foi informado no WSDL.")
+    cleaned = address.strip()
+    if not cleaned:
+        raise NFSeConfigurationError("Endereço do serviço NFSe não foi informado no WSDL.")
+    parsed = urlparse(cleaned)
+    if parsed.scheme:
+        return cleaned
+    return urljoin(wsdl_url, cleaned)
 
 
 __all__ = [
