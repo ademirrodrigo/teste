@@ -56,6 +56,36 @@ class BPOAppFlowTest(unittest.TestCase):
         )
         self.assertEqual(response.status_code, 401, response.text)
 
+    def test_admin_password_sync_from_env(self) -> None:
+        email = os.environ["BPO_ADMIN_EMAIL"]
+        original_password = os.environ["BPO_ADMIN_PASSWORD"]
+        response = self.client.post(
+            "/auth/login",
+            json={"email": email, "password": original_password},
+        )
+        self.assertEqual(response.status_code, 200, response.text)
+
+        new_password = "NovaSenha!456"
+        main.settings.admin_password = new_password
+        main.settings.admin_password_from_env = True
+        try:
+            main.on_startup()
+            updated_login = self.client.post(
+                "/auth/login",
+                json={"email": email, "password": new_password},
+            )
+            self.assertEqual(updated_login.status_code, 200, updated_login.text)
+
+            old_password_login = self.client.post(
+                "/auth/login",
+                json={"email": email, "password": original_password},
+            )
+            self.assertEqual(old_password_login.status_code, 401, old_password_login.text)
+        finally:
+            main.settings.admin_password = original_password
+            main.settings.admin_password_from_env = True
+            main.on_startup()
+
     def test_end_to_end_flow(self) -> None:
         headers = self.auth_headers()
 

@@ -52,6 +52,7 @@ class Settings:
     database_url: str
     admin_email: str
     admin_password: str
+    admin_password_from_env: bool
     admin_name: str
     nfse_wsdl_url: Optional[str]
     nfse_service_url: Optional[str]
@@ -60,11 +61,13 @@ class Settings:
 
     @classmethod
     def from_env(cls) -> "Settings":
+        admin_password_env = os.getenv("BPO_ADMIN_PASSWORD")
         return cls(
             secret_key=os.getenv("BPO_SECRET_KEY", "troque-essa-chave"),
             database_url=os.getenv("BPO_DATABASE_URL", "sqlite:///./bpo_finance.db"),
             admin_email=os.getenv("BPO_ADMIN_EMAIL", "admin@bpo.exemplo.com"),
-            admin_password=os.getenv("BPO_ADMIN_PASSWORD", "admin123"),
+            admin_password=admin_password_env if admin_password_env is not None else "admin123",
+            admin_password_from_env=admin_password_env is not None,
             admin_name=os.getenv("BPO_ADMIN_NAME", "Administrador"),
             nfse_wsdl_url=os.getenv("BPO_NFSE_WSDL_URL"),
             nfse_service_url=os.getenv("BPO_NFSE_SERVICE_URL"),

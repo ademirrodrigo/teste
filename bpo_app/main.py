@@ -135,8 +135,15 @@ def on_startup() -> None:
     session_factory = database.get_sessionmaker()
     with session_factory() as db:
         has_admin = db.query(User).filter(User.role == UserRole.ADMIN).first()
+        admin_email = (settings.admin_email or "admin@bpo.exemplo.com").lower()
+        admin = (
+            db.query(User)
+            .filter(func.lower(User.email) == admin_email)
+            .first()
+            if has_admin
+            else None
+        )
         if not has_admin:
-            admin_email = (settings.admin_email or "admin@bpo.exemplo.com").lower()
             admin_password = settings.admin_password or "admin123"
             admin = User(
                 full_name=settings.admin_name or "Administrador",
@@ -146,14 +153,24 @@ def on_startup() -> None:
             )
             db.add(admin)
             db.commit()
+            db.refresh(admin)
             logger.info(
                 "Administrador padrão criado com o e-mail %s. Atualize a senha após o primeiro login.",
                 admin_email,
             )
             if admin_password == "admin123":
                 logger.warning(
-                    "BPO_ADMIN_PASSWORD não definido. A senha padrão 'admin123' está em uso."
+                    "BPO_ADMIN_PASSWORD não definido. A senha padrão 'admin123' está em uso.",
                 )
+        elif settings.admin_password_from_env and settings.admin_password and admin:
+            if not verify_password(settings.admin_password, admin.password_hash):
+                admin.password_hash = get_password_hash(settings.admin_password)
+                db.commit()
+                logger.info(
+                    "Senha do administrador %s sincronizada com o valor definido em BPO_ADMIN_PASSWORD.",
+                    admin_email,
+                )
+
 
 
 @app.get("/", response_class=HTMLResponse)
