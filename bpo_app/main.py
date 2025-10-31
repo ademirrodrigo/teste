@@ -134,17 +134,13 @@ def on_startup() -> None:
 
     session_factory = database.get_sessionmaker()
     with session_factory() as db:
-        has_admin = db.query(User).filter(User.role == UserRole.ADMIN).first()
-        admin_email = (settings.admin_email or "admin@bpo.exemplo.com").lower()
-        admin = (
-            db.query(User)
-            .filter(func.lower(User.email) == admin_email)
-            .first()
-            if has_admin
-            else None
-        )
-        if not has_admin:
-            admin_password = settings.admin_password or "admin123"
+        admin_email = (settings.admin_email or "admin@bpo.exemplo.com").strip().lower()
+        admin_password = settings.admin_password or "admin123"
+
+        admin = db.query(User).filter(func.lower(User.email) == admin_email).first()
+        created_admin = False
+
+        if admin is None:
             admin = User(
                 full_name=settings.admin_name or "Administrador",
                 email=admin_email,
@@ -154,22 +150,34 @@ def on_startup() -> None:
             db.add(admin)
             db.commit()
             db.refresh(admin)
+            created_admin = True
             logger.info(
                 "Administrador padrão criado com o e-mail %s. Atualize a senha após o primeiro login.",
                 admin_email,
             )
-            if admin_password == "admin123":
-                logger.warning(
-                    "BPO_ADMIN_PASSWORD não definido. A senha padrão 'admin123' está em uso.",
-                )
-        elif settings.admin_password_from_env and settings.admin_password and admin:
+
+        updates_performed = False
+
+        if admin.role != UserRole.ADMIN:
+            admin.role = UserRole.ADMIN
+            updates_performed = True
+
+        if settings.admin_password_from_env and settings.admin_password:
             if not verify_password(settings.admin_password, admin.password_hash):
                 admin.password_hash = get_password_hash(settings.admin_password)
-                db.commit()
+                updates_performed = True
                 logger.info(
                     "Senha do administrador %s sincronizada com o valor definido em BPO_ADMIN_PASSWORD.",
                     admin_email,
                 )
+
+        if updates_performed:
+            db.commit()
+
+        if created_admin and admin_password == "admin123":
+            logger.warning(
+                "BPO_ADMIN_PASSWORD não definido. A senha padrão 'admin123' está em uso.",
+            )
 
 
 

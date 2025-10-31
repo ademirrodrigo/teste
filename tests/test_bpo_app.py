@@ -86,6 +86,32 @@ class BPOAppFlowTest(unittest.TestCase):
             main.settings.admin_password_from_env = True
             main.on_startup()
 
+    def test_startup_creates_admin_for_new_email(self) -> None:
+        original_email = main.settings.admin_email
+        original_password = main.settings.admin_password
+        original_password_from_env = main.settings.admin_password_from_env
+
+        new_email = "novo-admin@test.example"
+        new_password = "SenhaNova!789"
+
+        main.settings.admin_email = new_email
+        main.settings.admin_password = new_password
+        main.settings.admin_password_from_env = True
+
+        try:
+            main.on_startup()
+
+            response = self.client.post(
+                "/auth/login",
+                json={"email": new_email, "password": new_password},
+            )
+            self.assertEqual(response.status_code, 200, response.text)
+        finally:
+            main.settings.admin_email = original_email
+            main.settings.admin_password = original_password
+            main.settings.admin_password_from_env = original_password_from_env
+            main.on_startup()
+
     def test_end_to_end_flow(self) -> None:
         headers = self.auth_headers()
 
