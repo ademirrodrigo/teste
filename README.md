@@ -1,3 +1,197 @@
+# BPO Financeiro Simples
+
+O repositório agora inclui um sistema completo para escritórios de contabilidade que desejam oferecer BPO Financeiro aos seus clientes. A solução roda em `localhost`, usa apenas tecnologias gratuitas e foi pensada para ser clara para empresários que não dominam termos contábeis.
+
+## Principais recursos
+
+- **Multiempresa**: cadastre quantas empresas quiser, cada uma com contas bancárias, categorias e usuários próprios.
+- **Perfis de acesso separados**: clientes visualizam apenas os dados da própria empresa, enquanto o escritório possui um painel com visão consolidada.
+- **Importação de extratos**: suporte a arquivos Excel (`.xlsx`), CSV e OFX com classificação automática por palavras-chave.
+- **Relatórios em linguagem simples**: Fluxo de Caixa mensal, resumo de resultado (DRE simplificada), listas de contas a pagar e receber, além de destaques que explicam a situação do negócio.
+- **Exportação**: gere relatórios em PDF ou Excel com um clique.
+- **Interface responsiva**: painel renovado com seleção de período, gráfico interativo de fluxo de caixa e listas amigáveis de contas a pagar e receber que funcionam bem em computadores e celulares.
+- **Centro de configurações**: menu moderno para o escritório administrar empresas, usuários, contas bancárias, categorias, lançamentos e importações em um único lugar.
+- **Metas financeiras claras**: defina objetivos de entrada ou redução de gastos por empresa e acompanhe o progresso com mensagens em linguagem simples.
+- **Checklist colaborativo**: registre tarefas financeiras com responsáveis, prazos e status para alinhar ações entre o escritório e o cliente.
+- **Visão consolidada de metas e checklist**: contadores automáticos destacam metas ativas, próximos prazos e tarefas pendentes diretamente no painel do cliente.
+- **Integração NFSe (ABRASF)**: envie XMLs para os principais serviços SOAP (consulta, cancelamento, geração etc.) direto do painel administrativo.
+- **Emissão NFSe Goiânia**: preencha um formulário com dados do RPS e gere automaticamente o XML padrão ABRASF usado pela Prefeitura de Goiânia para envio do `GerarNfse`.
+- **API FastAPI com SQLite**: pronta para receber uma futura migração para PostgreSQL.
+- **Containerização**: Dockerfile e Docker Compose para subir o ambiente rapidamente.
+
+## Como executar com Docker
+
+```bash
+docker compose up --build
+```
+
+O serviço ficará disponível em `http://localhost:8000`. A interface web pode ser acessada em `http://localhost:8000/`.
+
+O sistema utiliza variáveis definidas em um arquivo `.env` na raiz do projeto. Os scripts de instalação criam esse arquivo automaticamente com uma chave secreta e credenciais iniciais geradas na hora. Caso esteja configurando manualmente, crie um arquivo `.env` com, por exemplo:
+
+```
+BPO_SECRET_KEY=troque-esta-chave
+BPO_ADMIN_EMAIL=admin@bpo.local
+BPO_ADMIN_PASSWORD=uma-senha-bem-segura
+BPO_ADMIN_NAME=Administrador
+# opcional: BPO_DATABASE_URL=sqlite:///./bpo_finance.db
+# integração NFSe (preencha se desejar acionar os serviços SOAP)
+# BPO_NFSE_WSDL_URL=https://exemplo.prefeitura.gov.br/nfse?wsdl
+# BPO_NFSE_SERVICE_URL=https://exemplo.prefeitura.gov.br/nfse.asmx
+# BPO_NFSE_TIMEOUT=45
+# BPO_NFSE_VERIFY_SSL=true
+```
+
+Na primeira inicialização essas informações criam o usuário administrador. Atualize a senha após o primeiro acesso e utilize valores fortes (principalmente para `BPO_SECRET_KEY`) antes de levar o sistema para produção.
+
+## Executando sem Docker
+
+```bash
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+uvicorn bpo_app.main:app --reload
+```
+
+## Testes automatizados
+
+```bash
+python -m unittest discover
+```
+
+Os testes cobrem o fluxo principal: login, cadastro de empresa, importação de extratos e geração de relatórios.
+
+## Verificação rápida do ambiente
+
+Caso encontre erros ao iniciar o sistema ou executar os testes, rode o script de diagnóstico:
+
+```bash
+python tools/run_diagnostics.py
+```
+
+Ele confirma se todas as dependências Python estão instaladas, aponta variáveis de ambiente sensíveis ainda com valores padrão,
+verifica se o banco de dados contém pelo menos um administrador e confirma a presença dos arquivos do frontend, instaladores e
+manual. Use `--json` para gerar uma saída estruturada útil em pipelines de CI ou para compartilhar com a equipe.
+
+## Scripts de instalação automatizada
+
+Os arquivos estão organizados em `installers/` com numeração sequencial para facilitar o envio direto ao cliente:
+
+1. `installers/01_windows_installer.ps1`
+2. `installers/02_linux_installer.sh`
+
+Cada script prepara o ambiente, instala dependências e pode iniciar o servidor imediatamente.
+
+### Windows 11 (PowerShell)
+
+```powershell
+Set-ExecutionPolicy -Scope Process Bypass
+cd installers
+./01_windows_installer.ps1
+```
+
+Use `-SkipRun` para instalar sem iniciar o servidor automaticamente ou ajuste host e porta com `-Host` e `-Port`.
+
+O script cria um arquivo `.env` com chave secreta e mostra na tela as credenciais iniciais do administrador.
+
+### Linux ou VPS Contábil (bash)
+
+```bash
+cd installers
+chmod +x 02_linux_installer.sh
+./02_linux_installer.sh
+```
+
+No Linux é possível evitar que o script execute o servidor adicionando `--skip-run`. Também é possível definir host e porta com `--host` e `--port`.
+
+Assim como no Windows, o script gera um `.env` com chave secreta e exibe as credenciais iniciais para você guardar.
+
+### Manual visual de instalação e uso
+
+Um guia passo a passo em formato de apresentação está disponível em `docs/manual_canva.md`. Ele pode ser compartilhado diretamente com clientes ou importado em ferramentas como Canva para customização visual.
+
+### Pacote completo para enviar ao cliente
+
+Use o comando abaixo para gerar um arquivo `.zip` com os instaladores, guia rápido, manual visual e arquivos da interface web. O pacote fica disponível em `dist/bpo_instalacao.zip` e pode ser anexado em e-mails ou compartilhado por Drive.
+
+```bash
+python tools/create_install_bundle.py
+```
+
+Se quiser personalizar o destino ou remover a interface web do pacote, consulte `docs/pacote_instalacao.md`.
+
+### Integração NFSe (ABRASF)
+
+O backend expõe a rota `POST /integrations/nfse/{operacao}` para enviar XMLs aos serviços padronizados pelo layout ABRASF. Informe o nome da operação (por exemplo, `ConsultarNfsePorRps`, `GerarNfse` ou `CancelarNfse`) e envie um JSON com o XML do cabeçalho (`nfse_cabec_msg`) e dos dados (`nfse_dados_msg`). Opcionalmente é possível sobrescrever a URL do WSDL, o endpoint do serviço, timeout e a verificação de certificado. Endereços relativos como `nfse.asmx` também são aceitos: o sistema combina automaticamente com a origem do WSDL, exatamente como em muitos modelos municipais.
+
+Exemplo de chamada:
+
+```bash
+curl -X POST "http://localhost:8000/integrations/nfse/ConsultarNfsePorRps" \
+  -H "Authorization: Bearer <TOKEN_DO_ADMIN>" \
+  -H "Content-Type: application/json" \
+  -d '{
+        "nfse_cabec_msg": "<cabecalho>...</cabecalho>",
+        "nfse_dados_msg": "<dados>...</dados>",
+        "wsdl_url": "https://exemplo.prefeitura.gov.br/nfse?wsdl",
+        "service_url": "https://exemplo.prefeitura.gov.br/nfse.asmx"
+      }'
+```
+
+Se nenhum valor for enviado para `wsdl_url` ou `service_url`, o sistema utiliza as configurações definidas no `.env`. Apenas administradores ou membros da equipe interna (perfil `staff`) podem acionar essa integração.
+
+#### Emissão NFSe padrão Goiânia
+
+Para agilizar a emissão no padrão ABRASF utilizado pela Prefeitura de Goiânia, há um atalho estruturado em `POST /integrations/nfse/goiania/emissao`. Basta informar os dados do prestador, tomador e serviço em linguagem direta que o backend monta o `nfseCabecMsg` e o `nfseDadosMsg` automaticamente e envia a operação `GerarNfse`.
+
+Exemplo mínimo:
+
+```bash
+curl -X POST "http://localhost:8000/integrations/nfse/goiania/emissao" \
+  -H "Authorization: Bearer <TOKEN_DO_ADMIN>" \
+  -H "Content-Type: application/json" \
+  -d '{
+        "numero_lote": "20240001",
+        "numero_rps": "15",
+        "serie_rps": "GO",
+        "data_emissao": "2024-01-10T10:30:00",
+        "prestador": {"cnpj": "12.345.678/0001-99", "inscricao_municipal": "123456"},
+        "servico": {
+            "item_lista_servico": "0701",
+            "codigo_tributacao_municipio": "070199",
+            "discriminacao": "Serviço de gestão financeira mensal",
+            "valores": {"valor_servicos": "1500.00", "iss_retido": 2}
+        },
+        "tomador": {
+            "razao_social": "Cliente NFSe Teste LTDA",
+            "cpf_cnpj": "00.987.654/3210-00",
+            "email": "cliente@teste.com",
+            "telefone": "62999990000",
+            "endereco": {
+                "logradouro": "Rua Central",
+                "numero": "100",
+                "bairro": "Centro",
+                "codigo_municipio": "5208707",
+                "uf": "GO",
+                "cep": "74000000"
+            }
+        },
+        "wsdl_url": "https://exemplo.prefeitura.gov.br/nfse?wsdl",
+        "service_url": "https://exemplo.prefeitura.gov.br/nfse.asmx"
+      }'
+```
+
+O retorno contém o XML gerado pelo serviço municipal. Caso já existam valores padrão no `.env`, os campos `wsdl_url` e `service_url` podem ser omitidos.
+
+## Estrutura de pastas relevante
+
+- `bpo_app/main.py`: aplicação FastAPI com autenticação por token, rotas de cadastro, importação de extratos e relatórios.
+- `bpo_app/models.py`: modelos do SQLAlchemy prontos para uso com SQLite ou PostgreSQL.
+- `bpo_app/frontend/`: arquivos HTML, CSS e JavaScript da interface amigável para o cliente.
+- `docker-compose.yml` e `Dockerfile`: containerização pronta para desenvolvimento.
+
+> A aplicação legado de monitoramento do eCAC continua disponível abaixo para referência.
+
 # Monitoramento do eCAC
 
 Este repositório contém uma ferramenta CLI em Python para monitorar periodicamente o eCAC para escritórios de contabilidade. Ela autentica usando o certificado digital de cada contribuinte (empresa ou pessoa física) ou, opcionalmente, apenas a procuração eletrônica do contador, consulta uma API proprietária e registra novos eventos em um banco SQLite, disparando alertas via webhook.
