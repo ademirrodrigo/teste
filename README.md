@@ -11,6 +11,9 @@ O repositório agora inclui um sistema completo para escritórios de contabilida
 - **Exportação**: gere relatórios em PDF ou Excel com um clique.
 - **Interface responsiva**: painel renovado com seleção de período, gráfico interativo de fluxo de caixa e listas amigáveis de contas a pagar e receber que funcionam bem em computadores e celulares.
 - **Centro de configurações**: menu moderno para o escritório administrar empresas, usuários, contas bancárias, categorias, lançamentos e importações em um único lugar.
+- **Metas financeiras claras**: defina objetivos de entrada ou redução de gastos por empresa e acompanhe o progresso com mensagens em linguagem simples.
+- **Checklist colaborativo**: registre tarefas financeiras com responsáveis, prazos e status para alinhar ações entre o escritório e o cliente.
+- **Visão consolidada de metas e checklist**: contadores automáticos destacam metas ativas, próximos prazos e tarefas pendentes diretamente no painel do cliente.
 - **Integração NFSe (ABRASF)**: envie XMLs para os principais serviços SOAP (consulta, cancelamento, geração etc.) direto do painel administrativo.
 - **Emissão NFSe Goiânia**: preencha um formulário com dados do RPS e gere automaticamente o XML padrão ABRASF usado pela Prefeitura de Goiânia para envio do `GerarNfse`.
 - **API FastAPI com SQLite**: pronta para receber uma futura migração para PostgreSQL.

@@ -1,10 +1,11 @@
 from datetime import date, datetime
+from enum import Enum
 from decimal import Decimal
 from typing import Optional
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, FieldValidationInfo, field_validator
 
-from .models import TransactionType, UserRole
+from .models import TaskStatus, TransactionType, UserRole
 from .nfse_goiania import (
     GoianiaNfseEmission,
     GoianiaPrestador,
@@ -116,6 +117,132 @@ class CategoryRead(CategoryBase):
     company_id: int
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class GoalStatus(str, Enum):
+    IN_PROGRESS = "in_progress"
+    ACHIEVED = "achieved"
+    MISSED = "missed"
+
+
+class FinancialGoalBase(BaseModel):
+    name: str = Field(..., min_length=2)
+    description: Optional[str] = Field(None, max_length=2000)
+    target_amount: float = Field(..., gt=0)
+    direction: TransactionType
+    period_start: date
+    period_end: date
+    archived: bool = False
+
+    @field_validator("period_end")
+    @classmethod
+    def validate_period(cls, value: date, info: FieldValidationInfo) -> date:
+        start = info.data.get("period_start")
+        if isinstance(start, date) and value < start:
+            raise ValueError("A data final deve ser posterior ou igual à data inicial da meta.")
+        return value
+
+
+class FinancialGoalCreate(FinancialGoalBase):
+    company_id: int
+
+
+class FinancialGoalUpdate(BaseModel):
+    name: Optional[str] = Field(None, min_length=2)
+    description: Optional[str] = Field(None, max_length=2000)
+    target_amount: Optional[float] = Field(None, gt=0)
+    direction: Optional[TransactionType] = None
+    period_start: Optional[date] = None
+    period_end: Optional[date] = None
+    archived: Optional[bool] = None
+
+    @field_validator("period_end")
+    @classmethod
+    def validate_period_end(cls, value: Optional[date], info: FieldValidationInfo) -> Optional[date]:
+        start = info.data.get("period_start")
+        if isinstance(start, date) and value is not None and value < start:
+            raise ValueError("A data final deve ser posterior ou igual à data inicial da meta.")
+        return value
+
+
+class FinancialGoalRead(FinancialGoalBase):
+    id: int
+    company_id: int
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class FinancialGoalProgress(BaseModel):
+    goal: FinancialGoalRead
+    actual_amount: float
+    remaining_amount: float
+    progress_percentage: float
+    status: GoalStatus
+    message: str
+
+
+class FinancialGoalSummary(BaseModel):
+    total: int = 0
+    archived: int = 0
+    achieved: int = 0
+    in_progress: int = 0
+    missed: int = 0
+    upcoming: list[FinancialGoalProgress] = Field(default_factory=list)
+    next_deadline: Optional[date] = None
+
+
+class TaskUserSummary(BaseModel):
+    id: int
+    full_name: str
+    email: EmailStr
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ChecklistTaskBase(BaseModel):
+    title: str = Field(..., min_length=2)
+    description: Optional[str] = Field(None, max_length=4000)
+    due_date: Optional[date] = None
+    status: TaskStatus = TaskStatus.OPEN
+    assigned_to_id: Optional[int] = None
+
+
+class ChecklistTaskCreate(ChecklistTaskBase):
+    company_id: int
+
+
+class ChecklistTaskUpdate(BaseModel):
+    title: Optional[str] = Field(None, min_length=2)
+    description: Optional[str] = Field(None, max_length=4000)
+    due_date: Optional[date] = None
+    status: Optional[TaskStatus] = None
+    assigned_to_id: Optional[int] = Field(default=None)
+
+
+class ChecklistTaskRead(ChecklistTaskBase):
+    id: int
+    company_id: int
+    created_by_id: Optional[int] = None
+    created_at: datetime
+    updated_at: datetime
+    completed_at: Optional[datetime] = None
+    assigned_to: Optional[TaskUserSummary] = None
+    created_by: Optional[TaskUserSummary] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class TaskSummary(BaseModel):
+    total: int = 0
+    open: int = 0
+    in_progress: int = 0
+    done: int = 0
+    overdue: int = 0
+    due_today: int = 0
+    due_soon: int = 0
+    unassigned: int = 0
+    spotlight: list[ChecklistTaskRead] = Field(default_factory=list)
 
 
 class TransactionBase(BaseModel):

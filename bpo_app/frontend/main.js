@@ -9,15 +9,38 @@ let cachedUsers = [];
 let cachedAccounts = [];
 let cachedCategories = [];
 let cachedTransactions = [];
+let cachedGoals = [];
+let cachedTasks = [];
+let cachedGoalSummary = null;
+let cachedTaskSummary = null;
 let configCompanyId = null;
 let currentConfigTab = 'overview';
 let editingCompanyId = null;
 let editingUserId = null;
+let editingGoalId = null;
+let editingTaskId = null;
 
 const ROLE_LABELS = {
   admin: 'Administrador',
   staff: 'Equipe interna',
   client: 'Cliente'
+};
+
+const GOAL_DIRECTION_LABELS = {
+  inflow: 'Entradas',
+  outflow: 'Saídas'
+};
+
+const GOAL_STATUS_LABELS = {
+  in_progress: 'Em andamento',
+  achieved: 'Concluída',
+  missed: 'Ajustar meta'
+};
+
+const TASK_STATUS_LABELS = {
+  open: 'Aberta',
+  in_progress: 'Em andamento',
+  done: 'Concluída'
 };
 
 const PERIOD_PRESETS = {
@@ -145,7 +168,9 @@ function toggleCompanyDependentForms(disabled) {
     'config-account-form',
     'config-category-form',
     'config-transaction-form',
-    'config-import-form'
+    'config-import-form',
+    'config-goal-form',
+    'config-task-form'
   ];
   ids.forEach((formId) => {
     const form = document.getElementById(formId);
@@ -157,6 +182,48 @@ function toggleCompanyDependentForms(disabled) {
       element.disabled = disabled;
     });
   });
+}
+
+function updateMetricValue(id, value) {
+  const element = document.getElementById(id);
+  if (element) {
+    element.textContent = value;
+  }
+}
+
+function updateGoalMetrics(summary) {
+  const total = summary?.total ?? 0;
+  const archived = summary?.archived ?? 0;
+  const active = Math.max(total - archived, 0);
+  updateMetricValue('goal-metric-active', String(active));
+  updateMetricValue('goal-metric-achieved', String(summary?.achieved ?? 0));
+  updateMetricValue('goal-metric-missed', String(summary?.missed ?? 0));
+  const nextElement = document.getElementById('goal-metric-next');
+  if (nextElement) {
+    if (summary?.next_deadline) {
+      const nextDate = summary.next_deadline;
+      const today = new Date();
+      const isoToday = today.toISOString().slice(0, 10);
+      if (nextDate === isoToday) {
+        nextElement.textContent = 'Hoje';
+      } else {
+        nextElement.textContent = formatDate(nextDate);
+      }
+    } else {
+      nextElement.textContent = '-';
+    }
+  }
+}
+
+function updateTaskMetrics(summary) {
+  const open = summary?.open ?? 0;
+  const inProgress = summary?.in_progress ?? 0;
+  const pendingTotal = open + inProgress;
+  updateMetricValue('task-metric-pending', String(pendingTotal));
+  updateMetricValue('task-metric-in-progress', String(inProgress));
+  updateMetricValue('task-metric-done', String(summary?.done ?? 0));
+  updateMetricValue('task-metric-overdue', String(summary?.overdue ?? 0));
+  updateMetricValue('task-metric-today', String(summary?.due_today ?? 0));
 }
 
 function populateTransactionAccountOptions() {
@@ -216,6 +283,35 @@ function populateUserCompanySelect() {
   }
 }
 
+function populateTaskAssigneeSelect() {
+  const select = document.getElementById('config-task-owner');
+  if (!select) {
+    return;
+  }
+  select.innerHTML = '';
+  const placeholder = document.createElement('option');
+  placeholder.value = '';
+  placeholder.textContent = 'Sem responsável definido';
+  select.appendChild(placeholder);
+
+  let options = [];
+  if (isAdminOrStaff()) {
+    options = cachedUsers.filter((user) => user.is_active !== false);
+  } else if (currentUser) {
+    options = [currentUser];
+  }
+
+  options.forEach((user) => {
+    const option = document.createElement('option');
+    option.value = user.id;
+    const companyName = user.company_id
+      ? cachedCompanies.find((company) => company.id === user.company_id)?.name
+      : null;
+    option.textContent = companyName ? `${user.full_name} · ${companyName}` : user.full_name;
+    select.appendChild(option);
+  });
+}
+
 function populateConfigFocusSelect() {
   const wrapper = document.getElementById('config-focus');
   const select = document.getElementById('config-company-focus');
@@ -268,6 +364,10 @@ function updateConfigCounts() {
   setCount('overview-users-count', cachedUsers.length);
   setCount('overview-accounts-count', cachedAccounts.length);
   setCount('overview-categories-count', cachedCategories.length);
+  const activeGoals = cachedGoals.filter((item) => !item.goal.archived).length;
+  const pendingTasks = cachedTasks.filter((task) => task.status !== 'done').length;
+  setCount('overview-goals-count', activeGoals);
+  setCount('overview-tasks-count', pendingTasks);
 }
 
 function updateConfigMenuVisibility() {
@@ -378,6 +478,203 @@ function renderOutstanding(listId, items, type) {
     `;
     list.appendChild(li);
   });
+}
+
+function renderGoalSummary(summary) {
+  const container = document.getElementById('goal-summary');
+  if (!container) {
+    return;
+  }
+  container.innerHTML = '';
+  updateGoalMetrics(summary);
+  if (!summary) {
+    const empty = document.createElement('p');
+    empty.className = 'muted small';
+    empty.textContent = 'Cadastre metas para acompanhar objetivos financeiros aqui.';
+    container.appendChild(empty);
+    return;
+  }
+  const upcoming = summary.upcoming || [];
+  if (!upcoming.length) {
+    const message = document.createElement('p');
+    message.className = 'muted small';
+    if (summary.total === 0) {
+      message.textContent = 'Cadastre metas para acompanhar objetivos financeiros aqui.';
+    } else {
+      message.textContent = 'Todas as metas estão concluídas ou arquivadas no momento.';
+    }
+    container.appendChild(message);
+    return;
+  }
+  upcoming.forEach((item) => {
+    const card = document.createElement('article');
+    card.className = `goal-summary-card status-${item.status}`;
+    const header = document.createElement('div');
+    header.className = 'goal-summary-header';
+    const title = document.createElement('strong');
+    title.textContent = item.goal.name;
+    header.appendChild(title);
+    const direction = document.createElement('span');
+    direction.className = 'goal-summary-direction';
+    direction.textContent = GOAL_DIRECTION_LABELS[item.goal.direction] || item.goal.direction;
+    header.appendChild(direction);
+    card.appendChild(header);
+
+    const statusLabel = document.createElement('span');
+    statusLabel.className = `status-pill goal-summary-status status-${item.status}`;
+    statusLabel.textContent = GOAL_STATUS_LABELS[item.status] || item.status;
+    card.appendChild(statusLabel);
+
+    const progressText = document.createElement('div');
+    progressText.className = 'goal-summary-values';
+    progressText.textContent = `${formatCurrency(item.actual_amount)} de ${formatCurrency(item.goal.target_amount)}`;
+    card.appendChild(progressText);
+
+    const bar = document.createElement('div');
+    bar.className = 'goal-progress-bar';
+    const fill = document.createElement('div');
+    fill.style.width = `${Math.min(item.progress_percentage, 100)}%`;
+    bar.appendChild(fill);
+    card.appendChild(bar);
+
+    const message = document.createElement('p');
+    message.className = 'muted small';
+    message.textContent = item.message;
+    card.appendChild(message);
+
+    container.appendChild(card);
+  });
+
+  const totalUpcoming = upcoming.length;
+  const activeGoals = Math.max((summary.total ?? 0) - (summary.archived ?? 0), 0);
+  if (activeGoals > totalUpcoming) {
+    const hint = document.createElement('p');
+    hint.className = 'muted small';
+    hint.textContent = `+${activeGoals - totalUpcoming} metas disponíveis no centro de configurações.`;
+    container.appendChild(hint);
+  }
+}
+
+function renderTaskSummary(summary) {
+  const list = document.getElementById('task-summary-list');
+  const empty = document.getElementById('task-summary-empty');
+  if (!list || !empty) {
+    return;
+  }
+  list.innerHTML = '';
+  updateTaskMetrics(summary);
+  const tasks = summary?.spotlight ?? [];
+  const pendingTotal = (summary?.open ?? 0) + (summary?.in_progress ?? 0);
+  if (!tasks.length) {
+    if ((summary?.total ?? 0) === 0) {
+      empty.textContent = 'Cadastre tarefas para controlar entregas combinadas com o escritório.';
+    } else {
+      empty.textContent = 'Checklist em dia! Não há tarefas pendentes.';
+    }
+    return;
+  }
+  empty.textContent = '';
+  tasks.slice(0, 4).forEach((task) => {
+    const li = document.createElement('li');
+    li.className = 'task-summary-item';
+
+    const title = document.createElement('div');
+    title.className = 'task-summary-title';
+    const strong = document.createElement('strong');
+    strong.textContent = task.title;
+    title.appendChild(strong);
+    if (task.description) {
+      const desc = document.createElement('p');
+      desc.className = 'muted small';
+      desc.textContent = task.description;
+      title.appendChild(desc);
+    }
+    li.appendChild(title);
+
+    const meta = document.createElement('div');
+    meta.className = 'task-summary-meta';
+    const statusChip = document.createElement('span');
+    statusChip.className = `task-summary-chip status-${task.status}`;
+    statusChip.textContent = TASK_STATUS_LABELS[task.status] || task.status;
+    meta.appendChild(statusChip);
+
+    const dueInfo = document.createElement('span');
+    dueInfo.className = 'task-summary-date';
+    dueInfo.textContent = task.due_date ? `Até ${formatDate(task.due_date)}` : 'Sem prazo definido';
+    meta.appendChild(dueInfo);
+
+    const owner = document.createElement('span');
+    owner.className = 'task-summary-owner';
+    owner.textContent = task.assigned_to ? task.assigned_to.full_name : 'Sem responsável';
+    meta.appendChild(owner);
+
+    li.appendChild(meta);
+    list.appendChild(li);
+  });
+
+  if (pendingTotal > 4) {
+    const more = document.createElement('li');
+    more.className = 'task-summary-more muted small';
+    more.textContent = `+${pendingTotal - 4} tarefas aguardando atenção.`;
+    list.appendChild(more);
+  }
+}
+
+async function loadGoalSummary() {
+  const container = document.getElementById('goal-summary');
+  if (!container || !currentUser) {
+    return;
+  }
+  let companyId = selectedCompany || currentUser.company_id || configCompanyId;
+  if (isAdminOrStaff()) {
+    if (!companyId && cachedCompanies.length) {
+      companyId = cachedCompanies[0].id;
+    }
+  }
+  if (!companyId) {
+    cachedGoalSummary = null;
+    updateGoalMetrics(null);
+    container.innerHTML = '<p class="muted small">Cadastre uma empresa e metas financeiras para visualizar aqui.</p>';
+    return;
+  }
+  try {
+    const summary = await apiRequest(`/financial-goals/summary?company_id=${companyId}`);
+    cachedGoalSummary = summary;
+    renderGoalSummary(summary);
+  } catch (error) {
+    cachedGoalSummary = null;
+    updateGoalMetrics(null);
+    container.innerHTML = `<p class="muted small">${error.message}</p>`;
+  }
+}
+
+async function loadTaskSummary() {
+  const list = document.getElementById('task-summary-list');
+  const empty = document.getElementById('task-summary-empty');
+  if (!list || !empty || !currentUser) {
+    return;
+  }
+  let companyId = selectedCompany || currentUser.company_id || configCompanyId;
+  if (isAdminOrStaff()) {
+    if (!companyId && cachedCompanies.length) {
+      companyId = cachedCompanies[0].id;
+    }
+  }
+  if (!companyId) {
+    cachedTaskSummary = null;
+    updateTaskMetrics(null);
+    renderTaskSummary(null);
+    return;
+  }
+  try {
+    const summary = await apiRequest(`/tasks/summary?company_id=${companyId}`);
+    cachedTaskSummary = summary;
+    renderTaskSummary(summary);
+  } catch (error) {
+    cachedTaskSummary = null;
+    updateTaskMetrics(null);
+    empty.textContent = error.message;
+  }
 }
 
 function renderCashflowTable(entries) {
@@ -855,12 +1152,14 @@ async function refreshUsersSection() {
   if (!isAdminOrStaff()) {
     cachedUsers = [];
     renderUserList([]);
+    populateTaskAssigneeSelect();
     updateConfigCounts();
     return;
   }
   const users = await apiRequest('/users');
   cachedUsers = users;
   renderUserList(users);
+  populateTaskAssigneeSelect();
   updateConfigCounts();
 }
 
@@ -1225,6 +1524,465 @@ async function handleImportSubmit(event) {
   }
 }
 
+function messageFromGoal(item) {
+  return item.message || '';
+}
+
+function renderGoalProgress(goals) {
+  const container = document.getElementById('config-goal-progress');
+  if (!container) {
+    return;
+  }
+  container.innerHTML = '';
+  if (!goals.length) {
+    const empty = document.createElement('p');
+    empty.className = 'muted';
+    empty.textContent = 'Cadastre metas para acompanhar o avanço das entradas e saídas.';
+    container.appendChild(empty);
+    return;
+  }
+  goals.forEach((item) => {
+    const card = document.createElement('article');
+    card.className = `goal-progress-card status-${item.status}`;
+    card.innerHTML = `
+      <header>
+        <strong>${item.goal.name}</strong>
+        <span>${GOAL_DIRECTION_LABELS[item.goal.direction] || item.goal.direction}</span>
+      </header>
+      <div class="goal-progress-values">
+        <span>${formatCurrency(item.actual_amount)}</span>
+        <span>de ${formatCurrency(item.goal.target_amount)}</span>
+      </div>
+      <div class="goal-progress-bar"><div style="width: ${Math.min(item.progress_percentage, 100)}%"></div></div>
+      <footer>
+        <span class="status-pill status-${item.status}">${GOAL_STATUS_LABELS[item.status] || item.status}</span>
+        <span class="muted small">${messageFromGoal(item)}</span>
+      </footer>
+    `;
+    container.appendChild(card);
+  });
+}
+
+function renderGoalList(goals) {
+  const list = document.getElementById('config-goal-list');
+  if (!list) {
+    return;
+  }
+  list.innerHTML = '';
+  if (!goals.length) {
+    const empty = document.createElement('li');
+    empty.className = 'empty-state';
+    empty.textContent = 'Nenhuma meta cadastrada para a empresa selecionada.';
+    list.appendChild(empty);
+    return;
+  }
+  goals.forEach((item) => {
+    const { goal, status, progress_percentage } = item;
+    const li = document.createElement('li');
+    const meta = document.createElement('div');
+    meta.className = 'item-meta';
+
+    const title = document.createElement('strong');
+    title.textContent = goal.name;
+    meta.appendChild(title);
+
+    const period = document.createElement('span');
+    period.className = 'muted small';
+    period.textContent = `Período: ${formatDate(goal.period_start)} até ${formatDate(goal.period_end)}`;
+    meta.appendChild(period);
+
+    const details = document.createElement('span');
+    details.className = 'muted small';
+    details.textContent = `${GOAL_DIRECTION_LABELS[goal.direction] || goal.direction} · ${progress_percentage.toFixed(0)}%`;
+    meta.appendChild(details);
+
+    if (goal.archived) {
+      const archived = document.createElement('span');
+      archived.className = 'status-pill status-archived';
+      archived.textContent = 'Arquivada';
+      meta.appendChild(archived);
+    } else {
+      const statusPill = document.createElement('span');
+      statusPill.className = `status-pill status-${status}`;
+      statusPill.textContent = GOAL_STATUS_LABELS[status] || status;
+      meta.appendChild(statusPill);
+    }
+
+    li.appendChild(meta);
+
+    const actions = document.createElement('div');
+    actions.className = 'item-actions';
+    const editButton = document.createElement('button');
+    editButton.className = 'inline';
+    editButton.dataset.action = 'edit';
+    editButton.dataset.id = goal.id;
+    editButton.textContent = 'Editar';
+    actions.appendChild(editButton);
+
+    const deleteButton = document.createElement('button');
+    deleteButton.className = 'inline';
+    deleteButton.dataset.action = 'delete';
+    deleteButton.dataset.id = goal.id;
+    deleteButton.textContent = 'Remover';
+    actions.appendChild(deleteButton);
+
+    li.appendChild(actions);
+    list.appendChild(li);
+  });
+}
+
+function resetGoalForm() {
+  const form = document.getElementById('config-goal-form');
+  if (!form) {
+    return;
+  }
+  form.reset();
+  editingGoalId = null;
+  const title = document.getElementById('config-goal-form-title');
+  if (title) {
+    title.textContent = 'Nova meta';
+  }
+  document.getElementById('config-goal-direction').value = 'inflow';
+  document.getElementById('config-goal-archived').checked = false;
+  const cancelButton = document.getElementById('config-goal-cancel');
+  if (cancelButton) {
+    cancelButton.classList.add('hidden');
+  }
+  clearFeedback('config-goal-feedback');
+}
+
+function startGoalEdit(goalId) {
+  const goal = cachedGoals.find((item) => item.goal.id === Number(goalId));
+  if (!goal) {
+    return;
+  }
+  editingGoalId = goal.goal.id;
+  const title = document.getElementById('config-goal-form-title');
+  if (title) {
+    title.textContent = 'Editar meta';
+  }
+  const cancelButton = document.getElementById('config-goal-cancel');
+  if (cancelButton) {
+    cancelButton.classList.remove('hidden');
+  }
+  document.getElementById('config-goal-name').value = goal.goal.name;
+  document.getElementById('config-goal-description').value = goal.goal.description || '';
+  document.getElementById('config-goal-direction').value = goal.goal.direction;
+  document.getElementById('config-goal-target').value = goal.goal.target_amount;
+  document.getElementById('config-goal-start').value = goal.goal.period_start;
+  document.getElementById('config-goal-end').value = goal.goal.period_end;
+  document.getElementById('config-goal-archived').checked = Boolean(goal.goal.archived);
+}
+
+async function refreshGoalsSection() {
+  const companyId = getActiveCompanyId();
+  if (!companyId) {
+    cachedGoals = [];
+    renderGoalList([]);
+    renderGoalProgress([]);
+    updateConfigCounts();
+    return;
+  }
+  try {
+    const goals = await apiRequest(`/financial-goals?company_id=${companyId}`);
+    cachedGoals = goals;
+    renderGoalList(goals);
+    renderGoalProgress(goals);
+    updateConfigCounts();
+  } catch (error) {
+    setFeedback('config-goal-feedback', error.message, true);
+  }
+}
+
+async function handleGoalSubmit(event) {
+  event.preventDefault();
+  const companyId = getActiveCompanyId();
+  if (!companyId && !editingGoalId) {
+    setFeedback('config-goal-feedback', 'Escolha a empresa antes de salvar a meta.', true);
+    return;
+  }
+  const targetInput = document.getElementById('config-goal-target');
+  const targetAmount = Number(targetInput.value);
+  if (!Number.isFinite(targetAmount) || targetAmount <= 0) {
+    setFeedback('config-goal-feedback', 'Informe um valor de meta maior que zero.', true);
+    return;
+  }
+  const startValue = document.getElementById('config-goal-start').value;
+  const endValue = document.getElementById('config-goal-end').value;
+  if (startValue && endValue && new Date(endValue) < new Date(startValue)) {
+    setFeedback('config-goal-feedback', 'A data final deve ser posterior ou igual ao início da meta.', true);
+    return;
+  }
+
+  const payload = {
+    name: document.getElementById('config-goal-name').value.trim(),
+    description: normalizeStringValue(document.getElementById('config-goal-description').value),
+    direction: document.getElementById('config-goal-direction').value,
+    target_amount: targetAmount,
+    period_start: startValue,
+    period_end: endValue,
+    archived: document.getElementById('config-goal-archived').checked
+  };
+
+  const isEditing = Boolean(editingGoalId);
+  const url = isEditing ? `/financial-goals/${editingGoalId}` : '/financial-goals';
+  const method = isEditing ? 'PUT' : 'POST';
+  if (!isEditing) {
+    payload.company_id = companyId;
+  }
+  try {
+    await apiRequest(url, {
+      method,
+      body: JSON.stringify(payload)
+    });
+    setFeedback('config-goal-feedback', 'Meta salva com sucesso!', false);
+    await refreshGoalsSection();
+    await loadGoalSummary();
+    resetGoalForm();
+  } catch (error) {
+    setFeedback('config-goal-feedback', error.message, true);
+  }
+}
+
+async function handleGoalListClick(event) {
+  const button = event.target.closest('button[data-action]');
+  if (!button) {
+    return;
+  }
+  const goalId = button.dataset.id;
+  if (button.dataset.action === 'edit') {
+    startGoalEdit(goalId);
+    return;
+  }
+  if (button.dataset.action === 'delete') {
+    const confirmed = window.confirm('Deseja remover esta meta?');
+    if (!confirmed) {
+      return;
+    }
+    try {
+      await apiRequest(`/financial-goals/${goalId}`, { method: 'DELETE' });
+      await refreshGoalsSection();
+      await loadGoalSummary();
+      setFeedback('config-goal-feedback', 'Meta removida.', false);
+    } catch (error) {
+      setFeedback('config-goal-feedback', error.message, true);
+    }
+  }
+}
+
+function renderTaskList(tasks) {
+  const list = document.getElementById('config-task-list');
+  if (!list) {
+    return;
+  }
+  list.innerHTML = '';
+  if (!tasks.length) {
+    const empty = document.createElement('li');
+    empty.className = 'empty-state';
+    empty.textContent = 'Nenhuma tarefa cadastrada para a empresa selecionada.';
+    list.appendChild(empty);
+    return;
+  }
+  tasks.forEach((task) => {
+    const li = document.createElement('li');
+    const meta = document.createElement('div');
+    meta.className = 'item-meta';
+    const title = document.createElement('strong');
+    title.textContent = task.title;
+    meta.appendChild(title);
+    if (task.description) {
+      const description = document.createElement('span');
+      description.className = 'muted';
+      description.textContent = task.description;
+      meta.appendChild(description);
+    }
+    const info = document.createElement('span');
+    info.className = 'muted small';
+    const due = task.due_date ? `Até ${formatDate(task.due_date)}` : 'Sem prazo definido';
+    const owner = task.assigned_to ? task.assigned_to.full_name : 'Sem responsável';
+    info.textContent = `${TASK_STATUS_LABELS[task.status] || task.status} · ${due} · ${owner}`;
+    meta.appendChild(info);
+    li.appendChild(meta);
+
+    const actions = document.createElement('div');
+    actions.className = 'item-actions';
+    const editButton = document.createElement('button');
+    editButton.className = 'inline';
+    editButton.dataset.action = 'edit';
+    editButton.dataset.id = task.id;
+    editButton.textContent = 'Editar';
+    actions.appendChild(editButton);
+
+    if (task.status !== 'done') {
+      const completeButton = document.createElement('button');
+      completeButton.className = 'inline';
+      completeButton.dataset.action = 'complete';
+      completeButton.dataset.id = task.id;
+      completeButton.textContent = 'Concluir';
+      actions.appendChild(completeButton);
+    }
+
+    const deleteButton = document.createElement('button');
+    deleteButton.className = 'inline';
+    deleteButton.dataset.action = 'delete';
+    deleteButton.dataset.id = task.id;
+    deleteButton.textContent = 'Remover';
+    actions.appendChild(deleteButton);
+
+    li.appendChild(actions);
+    list.appendChild(li);
+  });
+}
+
+function resetTaskForm() {
+  const form = document.getElementById('config-task-form');
+  if (!form) {
+    return;
+  }
+  form.reset();
+  editingTaskId = null;
+  const title = document.getElementById('config-task-form-title');
+  if (title) {
+    title.textContent = 'Nova tarefa';
+  }
+  const cancelButton = document.getElementById('config-task-cancel');
+  if (cancelButton) {
+    cancelButton.classList.add('hidden');
+  }
+  document.getElementById('config-task-status').value = 'open';
+  populateTaskAssigneeSelect();
+  clearFeedback('config-task-feedback');
+}
+
+function startTaskEdit(taskId) {
+  const task = cachedTasks.find((item) => item.id === Number(taskId));
+  if (!task) {
+    return;
+  }
+  editingTaskId = task.id;
+  const title = document.getElementById('config-task-form-title');
+  if (title) {
+    title.textContent = 'Editar tarefa';
+  }
+  const cancelButton = document.getElementById('config-task-cancel');
+  if (cancelButton) {
+    cancelButton.classList.remove('hidden');
+  }
+  document.getElementById('config-task-title').value = task.title;
+  document.getElementById('config-task-description').value = task.description || '';
+  document.getElementById('config-task-status').value = task.status;
+  document.getElementById('config-task-due').value = task.due_date || '';
+  populateTaskAssigneeSelect();
+  const ownerSelect = document.getElementById('config-task-owner');
+  if (ownerSelect) {
+    ownerSelect.value = task.assigned_to ? String(task.assigned_to.id) : '';
+  }
+}
+
+async function refreshTasksSection() {
+  const companyId = getActiveCompanyId();
+  if (!companyId) {
+    cachedTasks = [];
+    renderTaskList([]);
+    updateConfigCounts();
+    return;
+  }
+  try {
+    const tasks = await apiRequest(`/tasks?company_id=${companyId}`);
+    cachedTasks = tasks;
+    renderTaskList(tasks);
+    populateTaskAssigneeSelect();
+    updateConfigCounts();
+  } catch (error) {
+    setFeedback('config-task-feedback', error.message, true);
+  }
+}
+
+async function handleTaskSubmit(event) {
+  event.preventDefault();
+  const companyId = getActiveCompanyId();
+  if (!companyId && !editingTaskId) {
+    setFeedback('config-task-feedback', 'Escolha a empresa antes de salvar a tarefa.', true);
+    return;
+  }
+  const payload = {
+    title: document.getElementById('config-task-title').value.trim(),
+    description: normalizeStringValue(document.getElementById('config-task-description').value),
+    due_date: normalizeStringValue(document.getElementById('config-task-due').value),
+    status: document.getElementById('config-task-status').value,
+    assigned_to_id: normalizeStringValue(document.getElementById('config-task-owner').value)
+  };
+
+  if (!payload.title) {
+    setFeedback('config-task-feedback', 'Informe um título para a tarefa.', true);
+    return;
+  }
+
+  if (payload.assigned_to_id) {
+    payload.assigned_to_id = Number(payload.assigned_to_id);
+  } else {
+    payload.assigned_to_id = null;
+  }
+
+  const isEditing = Boolean(editingTaskId);
+  const url = isEditing ? `/tasks/${editingTaskId}` : '/tasks';
+  const method = isEditing ? 'PUT' : 'POST';
+  if (!isEditing) {
+    payload.company_id = companyId;
+  }
+  try {
+    await apiRequest(url, {
+      method,
+      body: JSON.stringify(payload)
+    });
+    setFeedback('config-task-feedback', 'Tarefa salva com sucesso!', false);
+    await refreshTasksSection();
+    await loadTaskSummary();
+    resetTaskForm();
+  } catch (error) {
+    setFeedback('config-task-feedback', error.message, true);
+  }
+}
+
+async function handleTaskListClick(event) {
+  const button = event.target.closest('button[data-action]');
+  if (!button) {
+    return;
+  }
+  const taskId = button.dataset.id;
+  if (button.dataset.action === 'edit') {
+    startTaskEdit(taskId);
+    return;
+  }
+  if (button.dataset.action === 'complete') {
+    try {
+      await apiRequest(`/tasks/${taskId}`, {
+        method: 'PUT',
+        body: JSON.stringify({ status: 'done' })
+      });
+      await refreshTasksSection();
+      await loadTaskSummary();
+    } catch (error) {
+      setFeedback('config-task-feedback', error.message, true);
+    }
+    return;
+  }
+  if (button.dataset.action === 'delete') {
+    const confirmed = window.confirm('Deseja remover esta tarefa?');
+    if (!confirmed) {
+      return;
+    }
+    try {
+      await apiRequest(`/tasks/${taskId}`, { method: 'DELETE' });
+      await refreshTasksSection();
+      await loadTaskSummary();
+      setFeedback('config-task-feedback', 'Tarefa removida.', false);
+    } catch (error) {
+      setFeedback('config-task-feedback', error.message, true);
+    }
+  }
+}
+
 async function showConfigTab(tab) {
   currentConfigTab = tab;
   const menuButtons = document.querySelectorAll('#config-menu button[data-tab]');
@@ -1248,6 +2006,8 @@ async function showConfigTab(tab) {
     await refreshAccountsSection();
     await refreshCategoriesSection();
     await refreshTransactionsSection();
+    await refreshGoalsSection();
+    await refreshTasksSection();
     updateConfigCounts();
   } else if (tab === 'companies') {
     await refreshCompaniesSection();
@@ -1264,6 +2024,11 @@ async function showConfigTab(tab) {
   } else if (tab === 'imports') {
     await refreshAccountsSection();
     await refreshCategoriesSection();
+  } else if (tab === 'goals') {
+    await refreshGoalsSection();
+  } else if (tab === 'tasks') {
+    await refreshUsersSection();
+    await refreshTasksSection();
   }
 }
 
@@ -1318,6 +2083,10 @@ async function handleConfigCompanyChange(event) {
     await refreshAccountsSection();
     await refreshCategoriesSection();
     await refreshTransactionsSection();
+    await refreshGoalsSection();
+    await refreshTasksSection();
+    await loadGoalSummary();
+    await loadTaskSummary();
   } catch (error) {
     console.error('Erro ao atualizar dados da empresa selecionada:', error);
   }
@@ -1350,10 +2119,14 @@ async function handleLogin(event) {
     cachedAccounts = [];
     cachedCategories = [];
     cachedTransactions = [];
+    cachedGoals = [];
+    cachedTasks = [];
     configCompanyId = currentUser.role === 'client' ? currentUser.company_id || null : null;
     currentConfigTab = 'overview';
     editingCompanyId = null;
     editingUserId = null;
+    editingGoalId = null;
+    editingTaskId = null;
     resetCompanyForm();
     resetUserForm();
     const accountForm = document.getElementById('config-account-form');
@@ -1384,17 +2157,24 @@ async function handleLogin(event) {
     if (importForm) {
       importForm.reset();
     }
+    resetGoalForm();
+    resetTaskForm();
     clearFeedback('config-account-feedback');
     clearFeedback('config-category-feedback');
     clearFeedback('config-transaction-feedback');
     clearFeedback('config-import-feedback');
+    clearFeedback('config-goal-feedback');
+    clearFeedback('config-task-feedback');
     updateRoleBasedUI();
+    populateTaskAssigneeSelect();
     document.getElementById('welcome').textContent = `Olá, ${currentUser.full_name}!`;
     toggleView(true);
     await populateCompanies();
     updatePeriodButtons(periodPreset);
     await loadHighlights();
     await loadFinancialReport();
+    await loadGoalSummary();
+    await loadTaskSummary();
   } catch (error) {
     errorElement.textContent = error.message;
   }
@@ -1410,10 +2190,14 @@ function handleLogout() {
   cachedAccounts = [];
   cachedCategories = [];
   cachedTransactions = [];
+  cachedGoals = [];
+  cachedTasks = [];
   configCompanyId = null;
   currentConfigTab = 'overview';
   editingCompanyId = null;
   editingUserId = null;
+  editingGoalId = null;
+  editingTaskId = null;
   if (cashflowChart) {
     cashflowChart.destroy();
     cashflowChart = null;
@@ -1449,12 +2233,16 @@ function handleLogout() {
   if (importForm) {
     importForm.reset();
   }
+  resetGoalForm();
+  resetTaskForm();
   clearFeedback('config-company-feedback');
   clearFeedback('config-user-feedback');
   clearFeedback('config-account-feedback');
   clearFeedback('config-category-feedback');
   clearFeedback('config-transaction-feedback');
   clearFeedback('config-import-feedback');
+  clearFeedback('config-goal-feedback');
+  clearFeedback('config-task-feedback');
   updateRoleBasedUI();
   updateConfigCounts();
   document.getElementById('login-form').reset();
@@ -1520,6 +2308,8 @@ function registerEventListeners() {
     const value = event.target.value;
     selectedCompany = value ? Number(value) : null;
     loadFinancialReport();
+    loadGoalSummary();
+    loadTaskSummary();
   });
   document.getElementById('open-config').addEventListener('click', (event) => {
     event.preventDefault();
@@ -1540,6 +2330,12 @@ function registerEventListeners() {
   document.getElementById('config-category-form').addEventListener('submit', handleCategorySubmit);
   document.getElementById('config-transaction-form').addEventListener('submit', handleTransactionSubmit);
   document.getElementById('config-import-form').addEventListener('submit', handleImportSubmit);
+  document.getElementById('config-goal-form').addEventListener('submit', handleGoalSubmit);
+  document.getElementById('config-goal-cancel').addEventListener('click', resetGoalForm);
+  document.getElementById('config-goal-list').addEventListener('click', handleGoalListClick);
+  document.getElementById('config-task-form').addEventListener('submit', handleTaskSubmit);
+  document.getElementById('config-task-cancel').addEventListener('click', resetTaskForm);
+  document.getElementById('config-task-list').addEventListener('click', handleTaskListClick);
   document.getElementById('config-company-focus').addEventListener('change', handleConfigCompanyChange);
 }
 

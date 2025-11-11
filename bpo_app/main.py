@@ -29,7 +29,10 @@ from .importers import parse_upload
 from .models import (
     BankAccount,
     Category,
+    ChecklistTask,
     Company,
+    FinancialGoal,
+    TaskStatus,
     Transaction,
     TransactionType,
     UploadLog,
@@ -52,13 +55,22 @@ from .schemas import (
     CategoryCreate,
     CategoryRead,
     CategoryUpdate,
+    ChecklistTaskCreate,
+    ChecklistTaskRead,
+    ChecklistTaskUpdate,
     CompanyCreate,
     CompanyRead,
     CompanyUpdate,
     CurrentUser,
     DRESummary,
     DashboardHighlight,
+    FinancialGoalCreate,
+    FinancialGoalProgress,
+    FinancialGoalRead,
+    FinancialGoalUpdate,
+    FinancialGoalSummary,
     FinancialHealthReport,
+    GoalStatus,
     LoginRequest,
     GoianiaNfseEmissionRequest,
     NFSeCallRequest,
@@ -73,6 +85,7 @@ from .schemas import (
     UserCreate,
     UserRead,
     UserUpdate,
+    TaskSummary,
 )
 from .settings import get_settings
 
@@ -105,6 +118,108 @@ def resolve_nfse_client(config: NFSeClientConfig, use_cache: bool = True) -> NFS
         _nfse_client = NFSeClient(config)
         _nfse_config = config
     return _nfse_client
+
+
+def format_brl(value: float) -> str:
+    return f"R$ {value:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+
+
+def resolve_company_id(company_id: Optional[int], current_user: CurrentUser) -> int:
+    if current_user.role == UserRole.CLIENT:
+        if not current_user.company_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Seu usuário não está vinculado a nenhuma empresa.",
+            )
+        if company_id and company_id != current_user.company_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Você só pode acessar dados da sua empresa.",
+            )
+        return current_user.company_id
+    if company_id is None:
+        raise HTTPException(status_code=400, detail="Informe a empresa desejada.")
+    return company_id
+
+
+def ensure_company_exists(db: Session, company_id: int) -> Company:
+    company = db.query(Company).filter(Company.id == company_id).first()
+    if not company:
+        raise HTTPException(status_code=404, detail="Empresa não encontrada")
+    return company
+
+
+def ensure_company_access(company_id: int, current_user: CurrentUser) -> None:
+    if current_user.role == UserRole.CLIENT and current_user.company_id != company_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Ação permitida apenas para a sua empresa.",
+        )
+
+
+def calculate_goal_progress(db: Session, goal: FinancialGoal) -> FinancialGoalProgress:
+    total = (
+        db.query(func.coalesce(func.sum(Transaction.amount), 0))
+        .filter(
+            Transaction.company_id == goal.company_id,
+            Transaction.transaction_type == goal.direction,
+            Transaction.date >= goal.period_start,
+            Transaction.date <= goal.period_end,
+        )
+        .scalar()
+    )
+    actual_amount = float(total or 0)
+    target_amount = float(goal.target_amount or 0)
+    remaining_amount = max(target_amount - actual_amount, 0.0)
+    today = date.today()
+
+    if goal.direction == TransactionType.INFLOW:
+        achieved = actual_amount >= target_amount and target_amount > 0
+        status = GoalStatus.ACHIEVED if achieved else GoalStatus.IN_PROGRESS
+        if today > goal.period_end and not achieved:
+            status = GoalStatus.MISSED
+        progress_percentage = (
+            min(100.0, (actual_amount / target_amount) * 100) if target_amount else 0.0
+        )
+        if status == GoalStatus.ACHIEVED:
+            message = "Meta atingida! Continue acompanhando o período."
+        elif status == GoalStatus.MISSED:
+            message = "O período encerrou antes de atingir a meta. Revise os próximos passos."
+        else:
+            message = f"Faltam {format_brl(remaining_amount)} para chegar ao objetivo."
+    else:
+        consumed_percentage = (
+            min(100.0, (actual_amount / target_amount) * 100) if target_amount else 0.0
+        )
+        status = GoalStatus.IN_PROGRESS
+        if actual_amount > target_amount and target_amount > 0:
+            status = GoalStatus.MISSED
+        if today > goal.period_end:
+            status = GoalStatus.ACHIEVED if actual_amount <= target_amount else GoalStatus.MISSED
+        progress_percentage = consumed_percentage
+        remaining_amount = (
+            max(target_amount - actual_amount, 0.0) if actual_amount <= target_amount else 0.0
+        )
+        if status == GoalStatus.MISSED:
+            message = "Os gastos passaram do limite planejado. Ajuste o próximo período."
+        elif status == GoalStatus.ACHIEVED:
+            message = "Período encerrado com gastos dentro do limite esperado."
+        else:
+            message = f"Limite disponível de {format_brl(remaining_amount)} até o fim do período."
+
+    return FinancialGoalProgress(
+        goal=FinancialGoalRead.model_validate(goal),
+        actual_amount=actual_amount,
+        remaining_amount=remaining_amount,
+        progress_percentage=round(progress_percentage, 2),
+        status=status,
+        message=message,
+    )
+
+
+def serialize_task(task: ChecklistTask) -> ChecklistTaskRead:
+    return ChecklistTaskRead.model_validate(task)
+
 
 app = FastAPI(title="BPO Financeiro Simples", version="1.0.0")
 
@@ -376,6 +491,310 @@ def list_categories(
         query = query.filter(Category.company_id == company_id)
     categories = query.order_by(Category.name.asc()).all()
     return [CategoryRead.model_validate(category) for category in categories]
+
+
+@app.post("/financial-goals", response_model=FinancialGoalRead)
+def create_financial_goal(
+    payload: FinancialGoalCreate,
+    db: Session = Depends(get_db),
+    current_user: CurrentUser = Depends(get_current_user),
+) -> FinancialGoalRead:
+    ensure_company_access(payload.company_id, current_user)
+    ensure_company_exists(db, payload.company_id)
+    goal = FinancialGoal(**payload.model_dump())
+    db.add(goal)
+    db.commit()
+    db.refresh(goal)
+    return FinancialGoalRead.model_validate(goal)
+
+
+@app.get("/financial-goals", response_model=list[FinancialGoalProgress])
+def list_financial_goals(
+    company_id: Optional[int] = None,
+    current_user: CurrentUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> list[FinancialGoalProgress]:
+    target_company_id = resolve_company_id(company_id, current_user)
+    ensure_company_exists(db, target_company_id)
+    goals = (
+        db.query(FinancialGoal)
+        .filter(FinancialGoal.company_id == target_company_id)
+        .order_by(FinancialGoal.period_end.asc())
+        .all()
+    )
+    progress_items = [calculate_goal_progress(db, goal) for goal in goals]
+    progress_items.sort(
+        key=lambda item: (
+            item.goal.archived,
+            item.status == GoalStatus.ACHIEVED,
+            item.goal.period_end,
+        )
+    )
+    return progress_items
+
+
+@app.get("/financial-goals/summary", response_model=FinancialGoalSummary)
+def summarize_financial_goals(
+    company_id: Optional[int] = None,
+    current_user: CurrentUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> FinancialGoalSummary:
+    target_company_id = resolve_company_id(company_id, current_user)
+    ensure_company_exists(db, target_company_id)
+    goals = (
+        db.query(FinancialGoal)
+        .filter(FinancialGoal.company_id == target_company_id)
+        .order_by(FinancialGoal.period_end.asc())
+        .all()
+    )
+    progress_items = [calculate_goal_progress(db, goal) for goal in goals]
+    archived = sum(1 for goal in goals if goal.archived)
+    achieved = sum(1 for item in progress_items if item.status == GoalStatus.ACHIEVED)
+    in_progress = sum(1 for item in progress_items if item.status == GoalStatus.IN_PROGRESS)
+    missed = sum(1 for item in progress_items if item.status == GoalStatus.MISSED)
+    upcoming = [item for item in progress_items if not item.goal.archived]
+    upcoming.sort(
+        key=lambda item: (
+            item.status != GoalStatus.MISSED,
+            item.status == GoalStatus.ACHIEVED,
+            item.goal.period_end,
+        )
+    )
+    upcoming = upcoming[:3]
+    today = date.today()
+    future_candidates = [
+        item
+        for item in progress_items
+        if not item.goal.archived and item.goal.period_end >= today
+    ]
+    future_candidates.sort(key=lambda item: item.goal.period_end)
+    next_deadline = future_candidates[0].goal.period_end if future_candidates else None
+    return FinancialGoalSummary(
+        total=len(goals),
+        archived=archived,
+        achieved=achieved,
+        in_progress=in_progress,
+        missed=missed,
+        upcoming=upcoming,
+        next_deadline=next_deadline,
+    )
+
+
+@app.get("/financial-goals/{goal_id}", response_model=FinancialGoalRead)
+def get_financial_goal(
+    goal_id: int,
+    current_user: CurrentUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> FinancialGoalRead:
+    goal = db.query(FinancialGoal).filter(FinancialGoal.id == goal_id).first()
+    if not goal:
+        raise HTTPException(status_code=404, detail="Meta não encontrada")
+    ensure_company_access(goal.company_id, current_user)
+    return FinancialGoalRead.model_validate(goal)
+
+
+@app.put("/financial-goals/{goal_id}", response_model=FinancialGoalRead)
+def update_financial_goal(
+    goal_id: int,
+    payload: FinancialGoalUpdate,
+    db: Session = Depends(get_db),
+    current_user: CurrentUser = Depends(get_current_user),
+) -> FinancialGoalRead:
+    goal = db.query(FinancialGoal).filter(FinancialGoal.id == goal_id).first()
+    if not goal:
+        raise HTTPException(status_code=404, detail="Meta não encontrada")
+    ensure_company_access(goal.company_id, current_user)
+    update_data = payload.model_dump(exclude_unset=True)
+    new_period_start = update_data.get("period_start", goal.period_start)
+    new_period_end = update_data.get("period_end", goal.period_end)
+    if new_period_start and new_period_end and new_period_end < new_period_start:
+        raise HTTPException(
+            status_code=400,
+            detail="A data final deve ser posterior ou igual à data inicial da meta.",
+        )
+    if "target_amount" in update_data and update_data["target_amount"] is not None:
+        if update_data["target_amount"] <= 0:
+            raise HTTPException(status_code=400, detail="Informe um valor de meta maior que zero.")
+    for key, value in update_data.items():
+        setattr(goal, key, value)
+    db.commit()
+    db.refresh(goal)
+    return FinancialGoalRead.model_validate(goal)
+
+
+@app.delete("/financial-goals/{goal_id}", response_model=SimpleMessage)
+def delete_financial_goal(
+    goal_id: int,
+    db: Session = Depends(get_db),
+    current_user: CurrentUser = Depends(get_current_user),
+) -> SimpleMessage:
+    goal = db.query(FinancialGoal).filter(FinancialGoal.id == goal_id).first()
+    if not goal:
+        raise HTTPException(status_code=404, detail="Meta não encontrada")
+    ensure_company_access(goal.company_id, current_user)
+    db.delete(goal)
+    db.commit()
+    return SimpleMessage(message="Meta removida com sucesso")
+
+
+@app.post("/tasks", response_model=ChecklistTaskRead)
+def create_task(
+    payload: ChecklistTaskCreate,
+    db: Session = Depends(get_db),
+    current_user: CurrentUser = Depends(get_current_user),
+) -> ChecklistTaskRead:
+    ensure_company_access(payload.company_id, current_user)
+    ensure_company_exists(db, payload.company_id)
+    task = ChecklistTask(
+        company_id=payload.company_id,
+        title=payload.title,
+        description=payload.description,
+        status=payload.status or TaskStatus.OPEN,
+        due_date=payload.due_date,
+        assigned_to_id=payload.assigned_to_id,
+        created_by_id=current_user.id,
+    )
+    db.add(task)
+    db.commit()
+    db.refresh(task)
+    return serialize_task(task)
+
+
+@app.get("/tasks", response_model=list[ChecklistTaskRead])
+def list_tasks(
+    company_id: Optional[int] = None,
+    current_user: CurrentUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> list[ChecklistTaskRead]:
+    target_company_id = resolve_company_id(company_id, current_user)
+    ensure_company_exists(db, target_company_id)
+    tasks = (
+        db.query(ChecklistTask)
+        .filter(ChecklistTask.company_id == target_company_id)
+        .all()
+    )
+    tasks.sort(
+        key=lambda task: (
+            task.status == TaskStatus.DONE,
+            task.due_date is None,
+            task.due_date or date.max,
+            task.created_at,
+        )
+    )
+    return [serialize_task(task) for task in tasks]
+
+
+@app.get("/tasks/summary", response_model=TaskSummary)
+def summarize_tasks(
+    company_id: Optional[int] = None,
+    current_user: CurrentUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> TaskSummary:
+    target_company_id = resolve_company_id(company_id, current_user)
+    ensure_company_exists(db, target_company_id)
+    tasks = (
+        db.query(ChecklistTask)
+        .filter(ChecklistTask.company_id == target_company_id)
+        .all()
+    )
+    today = date.today()
+    soon_threshold = today + timedelta(days=7)
+    open_count = sum(1 for task in tasks if task.status == TaskStatus.OPEN)
+    in_progress_count = sum(1 for task in tasks if task.status == TaskStatus.IN_PROGRESS)
+    done_count = sum(1 for task in tasks if task.status == TaskStatus.DONE)
+    overdue_count = sum(
+        1
+        for task in tasks
+        if task.status != TaskStatus.DONE and task.due_date and task.due_date < today
+    )
+    due_today_count = sum(
+        1
+        for task in tasks
+        if task.status != TaskStatus.DONE and task.due_date == today
+    )
+    due_soon_count = sum(
+        1
+        for task in tasks
+        if task.status != TaskStatus.DONE
+        and task.due_date
+        and today < task.due_date <= soon_threshold
+    )
+    unassigned_count = sum(1 for task in tasks if task.assigned_to_id is None)
+    spotlight_candidates = [task for task in tasks if task.status != TaskStatus.DONE]
+    spotlight_candidates.sort(
+        key=lambda task: (
+            task.due_date is None,
+            task.due_date or date.max,
+            task.created_at,
+        )
+    )
+    spotlight = [serialize_task(task) for task in spotlight_candidates[:6]]
+    return TaskSummary(
+        total=len(tasks),
+        open=open_count,
+        in_progress=in_progress_count,
+        done=done_count,
+        overdue=overdue_count,
+        due_today=due_today_count,
+        due_soon=due_soon_count,
+        unassigned=unassigned_count,
+        spotlight=spotlight,
+    )
+
+
+@app.get("/tasks/{task_id}", response_model=ChecklistTaskRead)
+def get_task(
+    task_id: int,
+    current_user: CurrentUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> ChecklistTaskRead:
+    task = db.query(ChecklistTask).filter(ChecklistTask.id == task_id).first()
+    if not task:
+        raise HTTPException(status_code=404, detail="Tarefa não encontrada")
+    ensure_company_access(task.company_id, current_user)
+    return serialize_task(task)
+
+
+@app.put("/tasks/{task_id}", response_model=ChecklistTaskRead)
+def update_task(
+    task_id: int,
+    payload: ChecklistTaskUpdate,
+    db: Session = Depends(get_db),
+    current_user: CurrentUser = Depends(get_current_user),
+) -> ChecklistTaskRead:
+    task = db.query(ChecklistTask).filter(ChecklistTask.id == task_id).first()
+    if not task:
+        raise HTTPException(status_code=404, detail="Tarefa não encontrada")
+    ensure_company_access(task.company_id, current_user)
+    update_data = payload.model_dump(exclude_unset=True)
+    for key in ("title", "description", "due_date", "assigned_to_id"):
+        if key in update_data:
+            setattr(task, key, update_data[key])
+    if "status" in update_data and update_data["status"]:
+        new_status = update_data["status"]
+        task.status = new_status
+        if new_status == TaskStatus.DONE:
+            task.completed_at = datetime.utcnow()
+        else:
+            task.completed_at = None
+    db.commit()
+    db.refresh(task)
+    return serialize_task(task)
+
+
+@app.delete("/tasks/{task_id}", response_model=SimpleMessage)
+def delete_task(
+    task_id: int,
+    db: Session = Depends(get_db),
+    current_user: CurrentUser = Depends(get_current_user),
+) -> SimpleMessage:
+    task = db.query(ChecklistTask).filter(ChecklistTask.id == task_id).first()
+    if not task:
+        raise HTTPException(status_code=404, detail="Tarefa não encontrada")
+    ensure_company_access(task.company_id, current_user)
+    db.delete(task)
+    db.commit()
+    return SimpleMessage(message="Tarefa removida com sucesso")
 
 
 @app.post("/transactions", response_model=TransactionRead)
