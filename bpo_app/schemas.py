@@ -1,9 +1,18 @@
 from datetime import date, datetime
+from decimal import Decimal
 from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
 from .models import TransactionType, UserRole
+from .nfse_goiania import (
+    GoianiaNfseEmission,
+    GoianiaPrestador,
+    GoianiaServico,
+    GoianiaServicoValores,
+    GoianiaTomador,
+    GoianiaTomadorEndereco,
+)
 
 
 class CompanyBase(BaseModel):
@@ -216,9 +225,7 @@ class SimpleMessage(BaseModel):
     message: str
 
 
-class NFSeCallRequest(BaseModel):
-    nfse_cabec_msg: str = Field(..., min_length=1, description="XML do cabeçalho da requisição NFSe")
-    nfse_dados_msg: str = Field(..., min_length=1, description="XML com os dados da requisição NFSe")
+class NFSeOverrides(BaseModel):
     wsdl_url: Optional[str] = Field(
         None,
         description="URL completa do WSDL para sobrescrever a configuração padrão (opcional)",
@@ -238,14 +245,6 @@ class NFSeCallRequest(BaseModel):
         description="Define se a verificação de certificado SSL deve ser forçada ou não (opcional)",
     )
 
-    @field_validator("nfse_cabec_msg", "nfse_dados_msg")
-    @classmethod
-    def ensure_not_blank(cls, value: str) -> str:
-        cleaned = value.strip()
-        if not cleaned:
-            raise ValueError("Informe o conteúdo XML da mensagem NFSe.")
-        return cleaned
-
     @field_validator("wsdl_url", "service_url")
     @classmethod
     def normalize_optional_urls(cls, value: Optional[str]) -> Optional[str]:
@@ -258,5 +257,165 @@ class NFSeCallRequest(BaseModel):
         return any(value is not None for value in (self.wsdl_url, self.service_url, self.timeout, self.verify_ssl))
 
 
+class NFSeCallRequest(NFSeOverrides):
+    nfse_cabec_msg: str = Field(..., min_length=1, description="XML do cabeçalho da requisição NFSe")
+    nfse_dados_msg: str = Field(..., min_length=1, description="XML com os dados da requisição NFSe")
+
+    @field_validator("nfse_cabec_msg", "nfse_dados_msg")
+    @classmethod
+    def ensure_not_blank(cls, value: str) -> str:
+        cleaned = value.strip()
+        if not cleaned:
+            raise ValueError("Informe o conteúdo XML da mensagem NFSe.")
+        return cleaned
+
+
 class NFSeCallResponse(BaseModel):
     output_xml: str = Field(..., description="XML devolvido pelo serviço NFSe")
+
+
+class GoianiaNfsePrestador(BaseModel):
+    cnpj: str = Field(..., min_length=1, description="CNPJ do prestador")
+    inscricao_municipal: str = Field(..., min_length=1, description="Inscrição municipal do prestador")
+
+    @field_validator("cnpj", "inscricao_municipal")
+    @classmethod
+    def remove_spaces(cls, value: str) -> str:
+        return value.strip()
+
+
+class GoianiaNfseEndereco(BaseModel):
+    logradouro: str
+    numero: str
+    bairro: str
+    codigo_municipio: str = Field("5208707", description="Código IBGE do município")
+    uf: str = Field("GO", min_length=2, max_length=2)
+    cep: Optional[str] = None
+    complemento: Optional[str] = None
+
+    @field_validator("logradouro", "numero", "bairro", "codigo_municipio", "uf")
+    @classmethod
+    def ensure_not_empty(cls, value: str) -> str:
+        cleaned = value.strip()
+        if not cleaned:
+            raise ValueError("Informe o endereço completo do tomador.")
+        return cleaned
+
+
+class GoianiaNfseTomador(BaseModel):
+    razao_social: str
+    cpf_cnpj: str
+    inscricao_municipal: Optional[str] = None
+    email: Optional[EmailStr] = None
+    telefone: Optional[str] = None
+    endereco: GoianiaNfseEndereco
+
+    @field_validator("razao_social", "cpf_cnpj")
+    @classmethod
+    def sanitize_text(cls, value: str) -> str:
+        cleaned = value.strip()
+        if not cleaned:
+            raise ValueError("Informe os dados do tomador.")
+        return cleaned
+
+
+class GoianiaNfseServicoValoresModel(BaseModel):
+    valor_servicos: Decimal = Field(..., description="Valor bruto dos serviços")
+    valor_deducoes: Decimal = Decimal("0")
+    valor_pis: Decimal = Decimal("0")
+    valor_cofins: Decimal = Decimal("0")
+    valor_inss: Decimal = Decimal("0")
+    valor_ir: Decimal = Decimal("0")
+    valor_csll: Decimal = Decimal("0")
+    outros_retencoes: Decimal = Decimal("0")
+    iss_retido: int = Field(2, ge=1, le=2)
+    valor_iss: Optional[Decimal] = None
+    valor_iss_retido: Optional[Decimal] = None
+    aliquota: Optional[Decimal] = None
+    desconto_condicionado: Optional[Decimal] = None
+    desconto_incondicionado: Optional[Decimal] = None
+
+
+class GoianiaNfseServicoModel(BaseModel):
+    item_lista_servico: str
+    codigo_tributacao_municipio: str
+    discriminacao: str
+    codigo_municipio: str = Field("5208707", description="Código do município da prestação")
+    valores: GoianiaNfseServicoValoresModel
+
+    @field_validator("item_lista_servico", "codigo_tributacao_municipio", "discriminacao")
+    @classmethod
+    def ensure_required(cls, value: str) -> str:
+        cleaned = value.strip()
+        if not cleaned:
+            raise ValueError("Informe os dados do serviço.")
+        return cleaned
+
+
+class GoianiaNfseEmissionRequest(NFSeOverrides):
+    numero_lote: str = Field(..., description="Número do lote a ser enviado")
+    numero_rps: str = Field(..., description="Número do RPS")
+    serie_rps: str = Field(..., description="Série do RPS")
+    tipo_rps: int = Field(1, ge=1, le=3)
+    data_emissao: datetime = Field(..., description="Data e hora da emissão do RPS")
+    natureza_operacao: int = Field(1, ge=1, le=6)
+    regime_especial_tributacao: Optional[int] = Field(None, ge=1, le=6)
+    optante_simples: int = Field(1, ge=1, le=2)
+    incentivador_cultural: int = Field(2, ge=1, le=2)
+    status_rps: int = Field(1, ge=1, le=2)
+    prestador: GoianiaNfsePrestador
+    servico: GoianiaNfseServicoModel
+    tomador: GoianiaNfseTomador
+
+    @field_validator("numero_lote", "numero_rps", "serie_rps")
+    @classmethod
+    def ensure_identifiers(cls, value: str) -> str:
+        cleaned = value.strip()
+        if not cleaned:
+            raise ValueError("Informe os identificadores do RPS.")
+        return cleaned
+
+    def to_domain(self) -> GoianiaNfseEmission:
+        valores = GoianiaServicoValores(**self.servico.valores.model_dump())
+        servico = GoianiaServico(
+            valores=valores,
+            item_lista_servico=self.servico.item_lista_servico,
+            codigo_tributacao_municipio=self.servico.codigo_tributacao_municipio,
+            discriminacao=self.servico.discriminacao,
+            codigo_municipio=self.servico.codigo_municipio,
+        )
+        prestador = GoianiaPrestador(**self.prestador.model_dump())
+        endereco = GoianiaTomadorEndereco(**self.tomador.endereco.model_dump())
+        tomador = GoianiaTomador(
+            razao_social=self.tomador.razao_social,
+            cpf_cnpj=self.tomador.cpf_cnpj,
+            inscricao_municipal=self.tomador.inscricao_municipal,
+            email=self.tomador.email,
+            telefone=self.tomador.telefone,
+            endereco=endereco,
+        )
+        return GoianiaNfseEmission(
+            numero_lote=self.numero_lote,
+            numero_rps=self.numero_rps,
+            serie_rps=self.serie_rps,
+            tipo_rps=self.tipo_rps,
+            data_emissao=self.data_emissao,
+            natureza_operacao=self.natureza_operacao,
+            regime_especial_tributacao=self.regime_especial_tributacao,
+            optante_simples=self.optante_simples,
+            incentivador_cultural=self.incentivador_cultural,
+            status_rps=self.status_rps,
+            prestador=prestador,
+            servico=servico,
+            tomador=tomador,
+        )
+
+    def to_call_request(self, cabecalho: str, dados: str) -> NFSeCallRequest:
+        return NFSeCallRequest(
+            nfse_cabec_msg=cabecalho,
+            nfse_dados_msg=dados,
+            wsdl_url=self.wsdl_url,
+            service_url=self.service_url,
+            timeout=self.timeout,
+            verify_ssl=self.verify_ssl,
+        )

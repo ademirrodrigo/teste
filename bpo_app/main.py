@@ -43,6 +43,7 @@ from .nfse_client import (
     NFSeOperationError,
     NFSeServiceError,
 )
+from .nfse_goiania import build_goiania_payload
 from .schemas import (
     BankAccountCreate,
     BankAccountRead,
@@ -59,6 +60,7 @@ from .schemas import (
     DashboardHighlight,
     FinancialHealthReport,
     LoginRequest,
+    GoianiaNfseEmissionRequest,
     NFSeCallRequest,
     NFSeCallResponse,
     OutstandingEntry,
@@ -786,6 +788,32 @@ async def trigger_nfse_operation(
 
     try:
         output_xml = await client.call_operation(operation, payload.nfse_cabec_msg, payload.nfse_dados_msg)
+    except NFSeOperationError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except NFSeConfigurationError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    except NFSeServiceError as exc:
+        raise HTTPException(status_code=502, detail=str(exc)) from exc
+
+    return NFSeCallResponse(output_xml=output_xml)
+
+
+@app.post("/integrations/nfse/goiania/emissao", response_model=NFSeCallResponse)
+async def emitir_nfse_goiania(
+    payload: GoianiaNfseEmissionRequest,
+    current_user: CurrentUser = Depends(require_role(UserRole.ADMIN, UserRole.STAFF)),
+) -> NFSeCallResponse:
+    emission = payload.to_domain()
+    cabecalho, dados = build_goiania_payload(emission)
+    call_request = payload.to_call_request(cabecalho, dados)
+    config = _build_nfse_config(call_request)
+    if config is None:
+        raise HTTPException(status_code=503, detail="Integração NFSe não está configurada.")
+
+    client = resolve_nfse_client(config, use_cache=not call_request.has_overrides())
+
+    try:
+        output_xml = await client.call_operation("GerarNfse", call_request.nfse_cabec_msg, call_request.nfse_dados_msg)
     except NFSeOperationError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except NFSeConfigurationError as exc:

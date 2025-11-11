@@ -2,7 +2,7 @@ import os
 import shutil
 import tempfile
 import unittest
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from pathlib import Path
 
 os.environ.setdefault("BPO_SECRET_KEY", "test-secret-key")
@@ -233,6 +233,82 @@ class BPOAppFlowTest(unittest.TestCase):
         self.assertEqual(response.status_code, 200, response.text)
         self.assertEqual(response.json()["output_xml"], "<xml-retorno />")
         self.assertEqual(calls[0][0], "ConsultarNfsePorRps")
+
+    def test_goiania_nfse_emission_endpoint_builds_payload(self) -> None:
+        headers = self.auth_headers()
+
+        captured: dict[str, str] = {}
+
+        class StubClient:
+            async def call_operation(self, operation: str, cabec: str, dados: str) -> str:
+                captured["operation"] = operation
+                captured["cabecalho"] = cabec
+                captured["dados"] = dados
+                return "<nfse-retorno />"
+
+        original_resolver = main.resolve_nfse_client
+
+        def fake_resolver(config, use_cache: bool = True):
+            self.assertEqual(config.wsdl_url, "http://nfse.example/wsdl")
+            self.assertEqual(config.service_url, "http://nfse.example/nfse.asmx")
+            return StubClient()
+
+        main.resolve_nfse_client = fake_resolver  # type: ignore[assignment]
+        try:
+            response = self.client.post(
+                "/integrations/nfse/goiania/emissao",
+                headers=headers,
+                json={
+                    "numero_lote": "20240001",
+                    "numero_rps": "15",
+                    "serie_rps": "GO",
+                    "tipo_rps": 1,
+                    "data_emissao": datetime(2024, 1, 10, 10, 30, 0).isoformat(),
+                    "natureza_operacao": 1,
+                    "regime_especial_tributacao": 6,
+                    "optante_simples": 1,
+                    "incentivador_cultural": 2,
+                    "status_rps": 1,
+                    "prestador": {
+                        "cnpj": "12.345.678/0001-99",
+                        "inscricao_municipal": "123456",
+                    },
+                    "servico": {
+                        "item_lista_servico": "0701",
+                        "codigo_tributacao_municipio": "070199",
+                        "discriminacao": "Serviço de gestão financeira mensal",
+                        "valores": {
+                            "valor_servicos": "1500.00",
+                            "iss_retido": 2,
+                        },
+                    },
+                    "tomador": {
+                        "razao_social": "Cliente NFSe Teste LTDA",
+                        "cpf_cnpj": "00.987.654/3210-00",
+                        "email": "cliente@teste.com",
+                        "telefone": "62999990000",
+                        "endereco": {
+                            "logradouro": "Rua Central",
+                            "numero": "100",
+                            "bairro": "Centro",
+                            "codigo_municipio": "5208707",
+                            "uf": "GO",
+                            "cep": "74000000",
+                        },
+                    },
+                    "wsdl_url": "http://nfse.example/wsdl",
+                    "service_url": "http://nfse.example/nfse.asmx",
+                },
+            )
+        finally:
+            main.resolve_nfse_client = original_resolver  # type: ignore[assignment]
+
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertEqual(response.json()["output_xml"], "<nfse-retorno />")
+        self.assertEqual(captured.get("operation"), "GerarNfse")
+        self.assertIn("GerarNfseEnvio", captured.get("dados", ""))
+        self.assertIn("<Numero>15</Numero>", captured.get("dados", ""))
+        self.assertIn("<RazaoSocial>Cliente NFSe Teste LTDA</RazaoSocial>", captured.get("dados", ""))
 
 
 if __name__ == "__main__":

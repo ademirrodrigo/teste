@@ -12,6 +12,7 @@ O repositório agora inclui um sistema completo para escritórios de contabilida
 - **Interface responsiva**: painel renovado com seleção de período, gráfico interativo de fluxo de caixa e listas amigáveis de contas a pagar e receber que funcionam bem em computadores e celulares.
 - **Centro de configurações**: menu moderno para o escritório administrar empresas, usuários, contas bancárias, categorias, lançamentos e importações em um único lugar.
 - **Integração NFSe (ABRASF)**: envie XMLs para os principais serviços SOAP (consulta, cancelamento, geração etc.) direto do painel administrativo.
+- **Emissão NFSe Goiânia**: preencha um formulário com dados do RPS e gere automaticamente o XML padrão ABRASF usado pela Prefeitura de Goiânia para envio do `GerarNfse`.
 - **API FastAPI com SQLite**: pronta para receber uma futura migração para PostgreSQL.
 - **Containerização**: Dockerfile e Docker Compose para subir o ambiente rapidamente.
 
@@ -123,6 +124,49 @@ curl -X POST "http://localhost:8000/integrations/nfse/ConsultarNfsePorRps" \
 ```
 
 Se nenhum valor for enviado para `wsdl_url` ou `service_url`, o sistema utiliza as configurações definidas no `.env`. Apenas administradores ou membros da equipe interna (perfil `staff`) podem acionar essa integração.
+
+#### Emissão NFSe padrão Goiânia
+
+Para agilizar a emissão no padrão ABRASF utilizado pela Prefeitura de Goiânia, há um atalho estruturado em `POST /integrations/nfse/goiania/emissao`. Basta informar os dados do prestador, tomador e serviço em linguagem direta que o backend monta o `nfseCabecMsg` e o `nfseDadosMsg` automaticamente e envia a operação `GerarNfse`.
+
+Exemplo mínimo:
+
+```bash
+curl -X POST "http://localhost:8000/integrations/nfse/goiania/emissao" \
+  -H "Authorization: Bearer <TOKEN_DO_ADMIN>" \
+  -H "Content-Type: application/json" \
+  -d '{
+        "numero_lote": "20240001",
+        "numero_rps": "15",
+        "serie_rps": "GO",
+        "data_emissao": "2024-01-10T10:30:00",
+        "prestador": {"cnpj": "12.345.678/0001-99", "inscricao_municipal": "123456"},
+        "servico": {
+            "item_lista_servico": "0701",
+            "codigo_tributacao_municipio": "070199",
+            "discriminacao": "Serviço de gestão financeira mensal",
+            "valores": {"valor_servicos": "1500.00", "iss_retido": 2}
+        },
+        "tomador": {
+            "razao_social": "Cliente NFSe Teste LTDA",
+            "cpf_cnpj": "00.987.654/3210-00",
+            "email": "cliente@teste.com",
+            "telefone": "62999990000",
+            "endereco": {
+                "logradouro": "Rua Central",
+                "numero": "100",
+                "bairro": "Centro",
+                "codigo_municipio": "5208707",
+                "uf": "GO",
+                "cep": "74000000"
+            }
+        },
+        "wsdl_url": "https://exemplo.prefeitura.gov.br/nfse?wsdl",
+        "service_url": "https://exemplo.prefeitura.gov.br/nfse.asmx"
+      }'
+```
+
+O retorno contém o XML gerado pelo serviço municipal. Caso já existam valores padrão no `.env`, os campos `wsdl_url` e `service_url` podem ser omitidos.
 
 ## Estrutura de pastas relevante
 
