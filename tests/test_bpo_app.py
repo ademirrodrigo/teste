@@ -13,6 +13,7 @@ os.environ.setdefault("BPO_ADMIN_NAME", "Administrador Teste")
 from fastapi.testclient import TestClient  # noqa: E402
 
 from bpo_app import database, main  # noqa: E402
+from tools.run_diagnostics import collect_diagnostics  # noqa: E402
 
 
 class BPOAppFlowTest(unittest.TestCase):
@@ -111,6 +112,12 @@ class BPOAppFlowTest(unittest.TestCase):
             main.settings.admin_password = original_password
             main.settings.admin_password_from_env = original_password_from_env
             main.on_startup()
+
+    def test_collect_diagnostics_reports_expected_information(self) -> None:
+        result = collect_diagnostics()
+        self.assertEqual(result.missing_modules, [])
+        self.assertGreaterEqual(result.database["admins"], 1)
+        self.assertIn("frontend_index", result.assets)
 
     def test_end_to_end_flow(self) -> None:
         headers = self.auth_headers()

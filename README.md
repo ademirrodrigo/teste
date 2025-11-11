@@ -58,6 +58,18 @@ python -m unittest discover
 
 Os testes cobrem o fluxo principal: login, cadastro de empresa, importação de extratos e geração de relatórios.
 
+## Verificação rápida do ambiente
+
+Caso encontre erros ao iniciar o sistema ou executar os testes, rode o script de diagnóstico:
+
+```bash
+python tools/run_diagnostics.py
+```
+
+Ele confirma se todas as dependências Python estão instaladas, aponta variáveis de ambiente sensíveis ainda com valores padrão,
+verifica se o banco de dados contém pelo menos um administrador e confirma a presença dos arquivos do frontend, instaladores e
+manual. Use `--json` para gerar uma saída estruturada útil em pipelines de CI ou para compartilhar com a equipe.
+
 ## Scripts de instalação automatizada
 
 Os arquivos estão organizados em `installers/` com numeração sequencial para facilitar o envio direto ao cliente:
