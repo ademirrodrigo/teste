@@ -31,11 +31,18 @@ class Settings:
     log_dir: Path = Path(os.getenv("LOG_DIR", BASE_DIR / "logs"))
     xml_dir: Path = Path(os.getenv("XML_DIR", BASE_DIR / "data" / "xmls"))
     html_dir: Path = Path(os.getenv("HTML_DIR", BASE_DIR / "data" / "html"))
+    nfse_dir: Path = Path(os.getenv("NFSE_DIR", BASE_DIR / "data" / "nfse"))
     certs_dir: Path = Path(os.getenv("CERTS_DIR", BASE_DIR / "certs"))
 
     def ensure_directories(self) -> None:
         """Garante a existência dos diretórios necessários."""
-        for path in (self.log_dir, self.xml_dir, self.html_dir, self.certs_dir):
+        for path in (
+            self.log_dir,
+            self.xml_dir,
+            self.html_dir,
+            self.nfse_dir,
+            self.certs_dir,
+        ):
             path.mkdir(parents=True, exist_ok=True)
 
 

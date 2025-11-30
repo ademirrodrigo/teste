@@ -61,6 +61,25 @@ Sistema completo para coleta automatizada de documentos fiscais eletrônicos (NF
 3. Clique em **🔄 Coletar Agora** para executar as rotinas de coleta.
 4. Os documentos são salvos nas pastas `data/xmls/<CNPJ>/` e `data/html/<CNPJ>/` e registrados no banco SQLite.
 
+## Emissão de NFS-e Goiânia (ISSNet Online)
+- A emissão é feita com certificado A1 (`.pfx`) via automação HTTP do portal do ISSNet Online.
+- O XML é salvo automaticamente em `data/nfse/<CNPJ>/<ANO>/<MES>/NFSe-<numero>-<competencia>.xml` e o resumo opcional em `.json`.
+- Requisitos adicionais:
+  - `pytesseract` + mecanismo Tesseract instalado no sistema para resolver o captcha automaticamente (Linux: `sudo apt install tesseract-ocr`; Windows: [instalador oficial](https://github.com/UB-Mannheim/tesseract/wiki)).
+  - Certificado `.pfx` da empresa na pasta `certs/` e senha correspondente.
+
+### Passo a passo (CLI)
+1. Cadastre a empresa no painel Streamlit, informando CNPJ e senha do certificado.
+2. Preencha um arquivo YAML/JSON seguindo o modelo `nfse_payload.example.yml`.
+3. Execute a emissão:
+   ```bash
+   ./nfse_emit.sh --empresa 12.345.678/0001-90 --senha-cert SUASENHA --input nfse_payload.example.yml --salvar-json
+   ```
+   - No Windows, utilize: `nfse_emit.bat --empresa 12.345.678/0001-90 --senha-cert SUASENHA --input nfse_payload.example.yml --salvar-json`
+   - Parâmetros opcionais `--usuario-portal` e `--senha-portal` permitem informar credenciais diferentes do CNPJ.
+4. O script cria/usa `.venv`, instala dependências e grava os arquivos no diretório `data/nfse/` respeitando empresa/ano/mês.
+5. Em caso de mudança de layout ou captcha complexo, o módulo registra logs em `logs/coletor.log` para ajuste rápido.
+
 ## Execução com Systemd
 O script `install.sh` configura o ambiente em servidores Linux (Ubuntu) criando um serviço systemd para o painel Streamlit. Revise o arquivo antes de executar para ajustar caminhos ou usuário do serviço.
 

@@ -1,0 +1,19 @@
+# Exemplo de payload para emissão de NFS-e via CLI
+competencia: "2024-08-01"
+tomador:
+  razao_social: "Cliente Exemplo LTDA"
+  documento: "12.345.678/0001-90"
+  inscricao_municipal: "123456"
+  email: "financeiro@cliente.com"
+  endereco: "Avenida Exemplo, 123"
+  bairro: "Setor Central"
+  cep: "74000-000"
+  municipio: "Goiânia"
+  uf: "GO"
+servico:
+  codigo_tributacao: "07.02"
+  aliquota: 0.05
+  valor_servico: 1500.00
+  discriminacao: "Prestação de serviços de consultoria e suporte presencial"
+  iss_retido: false
+  deducoes: 0
