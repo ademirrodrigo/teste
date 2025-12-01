@@ -25,7 +25,7 @@ Sistema completo para coleta automatizada de documentos fiscais eletrônicos (NF
 
 ## Configuração Inicial
 1. Copie `.env.example` para `.env` e ajuste as variáveis conforme necessário.
-2. Instale as dependências utilizando um ambiente virtual:
+2. Instale as dependências utilizando um ambiente virtual (ou simplesmente execute `install.bat` no Windows / `install.sh` no Linux para automatizar todo o processo):
    ```bash
    python -m venv .venv
    source .venv/bin/activate          # Linux/macOS
@@ -34,7 +34,7 @@ Sistema completo para coleta automatizada de documentos fiscais eletrônicos (NF
    python -m pip install -r requirements.txt
    ```
    > 💡 **Windows 11:** Com Python 3.13 certifique-se de atualizar o `pip` (`python -m pip install --upgrade pip`) para baixar o wheel oficial do `lxml 5.3.x`. Caso utilize versões mais antigas do `lxml`, será necessário instalar o [Microsoft C++ Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/).
-3. Execute o painel Streamlit:
+3. Execute o painel Streamlit (**não** execute `py web/app.py`; use o comando do Streamlit ou o `start.bat`/`start.sh` para que as dependências sejam carregadas automaticamente):
    ```bash
    python -m streamlit run web/app.py --server.port 8501
    ```
@@ -47,8 +47,12 @@ Sistema completo para coleta automatizada de documentos fiscais eletrônicos (NF
 ### Scripts rápidos para Windows
 - `install.bat`: instalação padrão (cria/atualiza `.venv` e dependências).
 - `force_install.bat`: reinstalação completa, removendo e recriando o ambiente virtual.
-- `start.bat`: inicialização do painel Streamlit utilizando o ambiente configurado.
+- `start.bat`: inicialização do painel Streamlit utilizando o ambiente configurado; se o ambiente ou o Streamlit não estiverem instalados, o script executa a instalação automaticamente.
 - `verify.bat`: verificação rápida do ambiente (versão do Python, `pip check` e compilação das pastas `app/` e `web/`).
+
+> ℹ️ **Erro “ModuleNotFoundError: No module named 'streamlit'”**
+> - Verifique se você instalou as dependências (`install.bat` no Windows ou `install.sh` no Linux) antes de iniciar.
+> - Utilize `start.bat` (Windows) ou `python -m streamlit run web/app.py` (Linux/macOS) em vez de `py app.py`, pois o aplicativo precisa ser executado pelo CLI do Streamlit.
 
 
 ## Cadastro de Empresas
