@@ -83,6 +83,8 @@ Sistema completo para coleta automatizada de documentos fiscais eletrônicos (NF
    - Parâmetros opcionais `--usuario-portal` e `--senha-portal` permitem informar credenciais diferentes do CNPJ.
 4. O script cria/usa `.venv`, instala dependências e grava os arquivos no diretório `data/nfse/` respeitando empresa/ano/mês.
 5. Em caso de mudança de layout ou captcha complexo, o módulo registra logs em `logs/coletor.log` para ajuste rápido.
+6. A CLI inicializa o banco SQLite automaticamente (criando a tabela de empresas caso o painel ainda não tenha sido aberto) e valida
+   a presença do certificado `.pfx` antes de enviar os dados.
 
 ## Execução com Systemd
 O script `install.sh` configura o ambiente em servidores Linux (Ubuntu) criando um serviço systemd para o painel Streamlit. Revise o arquivo antes de executar para ajustar caminhos ou usuário do serviço.

@@ -11,7 +11,7 @@ from typing import Any
 
 import yaml
 
-from ..database import session_scope
+from ..database import init_db, session_scope
 from ..models import Empresa
 from ..utils.cnpj import sanitize_cnpj
 from ..utils.helpers import setup_logging
@@ -69,13 +69,24 @@ def criar_nota(payload: dict[str, Any]) -> NotaServico:
     )
 
     competencia = payload.get("competencia")
-    if isinstance(competencia, str):
-        ano, mes, dia = competencia.split("-") + ["01"] * (3 - len(competencia.split("-")))
-        competencia_date = date(int(ano), int(mes), int(dia))
-    elif isinstance(competencia, (list, tuple)):
-        competencia_date = date(int(competencia[0]), int(competencia[1]), int(competencia[2]))
-    else:
-        competencia_date = date.today()
+
+    try:
+        if isinstance(competencia, str):
+            partes = competencia.split("-")
+            while len(partes) < 3:
+                partes.append("01")
+            ano, mes, dia = (int(v) for v in partes[:3])
+            competencia_date = date(ano, mes, dia)
+        elif isinstance(competencia, (list, tuple)):
+            partes_seq = list(competencia)
+            while len(partes_seq) < 3:
+                partes_seq.append(1)
+            ano, mes, dia = (int(v) for v in partes_seq[:3])
+            competencia_date = date(ano, mes, dia)
+        else:
+            competencia_date = date.today()
+    except Exception as exc:
+        raise ValueError(f"Competência inválida: {competencia}") from exc
 
     return NotaServico(
         competencia=competencia_date,
@@ -95,16 +106,37 @@ def main() -> None:
 
     args = parser.parse_args()
 
-    empresa = carregar_empresa(args.empresa)
-    payload = carregar_payload(Path(args.input))
-    nota = criar_nota(payload)
+    init_db()
 
-    cliente = NfseGoianiaClient(
-        empresa=empresa,
-        senha_certificado=args.senha_cert,
-        usuario_portal=args.usuario_portal,
-        senha_portal=args.senha_portal,
-    )
+    try:
+        empresa = carregar_empresa(args.empresa)
+    except Exception as exc:
+        LOGGER.error("Erro ao carregar empresa: %s", exc)
+        raise SystemExit(1) from exc
+
+    try:
+        payload = carregar_payload(Path(args.input))
+        nota = criar_nota(payload)
+    except ValueError as exc:
+        LOGGER.error(str(exc))
+        raise SystemExit(1) from exc
+    except Exception as exc:
+        LOGGER.error("Erro ao ler o payload: %s", exc)
+        raise SystemExit(1) from exc
+
+    try:
+        cliente = NfseGoianiaClient(
+            empresa=empresa,
+            senha_certificado=args.senha_cert,
+            usuario_portal=args.usuario_portal,
+            senha_portal=args.senha_portal,
+        )
+    except FileNotFoundError as exc:
+        LOGGER.error("Certificado não encontrado: %s", exc)
+        raise SystemExit(1) from exc
+    except Exception as exc:
+        LOGGER.error("Erro ao preparar o cliente NFS-e: %s", exc)
+        raise SystemExit(1) from exc
 
     try:
         if args.salvar_json:
