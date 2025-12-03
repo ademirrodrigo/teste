@@ -71,6 +71,7 @@ Sistema completo para coleta automatizada de documentos fiscais eletrônicos (NF
 - Requisitos adicionais:
   - `pytesseract` + mecanismo Tesseract instalado no sistema para resolver o captcha automaticamente (Linux: `sudo apt install tesseract-ocr`; Windows: [instalador oficial](https://github.com/UB-Mannheim/tesseract/wiki)).
   - Certificado `.pfx` da empresa na pasta `certs/` e senha correspondente.
+  - O payload da nota é validado antes do envio (tomador/serviço obrigatórios) e o download do XML repete em caso de falhas de rede.
 
 ### Passo a passo (CLI)
 1. Cadastre a empresa no painel Streamlit, informando CNPJ e senha do certificado.

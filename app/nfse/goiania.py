@@ -277,9 +277,10 @@ class NfseGoianiaClient:
         if nota.xml_url:
             resp = self._get(nota.xml_url)
         else:
+            if not nota.numero_nfse:
+                raise NfseException("Número da NFS-e ausente; não é possível baixar o XML.")
             params = {"numero": nota.numero_nfse, "competencia": nota.competencia.strftime("%Y-%m")}
-            resp = self._session.post(self.endpoints.download_url, data=params, timeout=30)
-            resp.raise_for_status()
+            resp = self._post(self.endpoints.download_url, data=params)
 
         nome_arquivo = f"NFSe-{nota.numero_nfse}-{nota.competencia.strftime('%Y%m')}.xml"
         destino = gerar_caminho_nfse(self.empresa.cnpj, nota.competencia, nome_arquivo)

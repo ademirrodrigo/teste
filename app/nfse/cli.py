@@ -36,8 +36,43 @@ def carregar_payload(caminho: Path) -> dict[str, Any]:
         raise SystemExit(f"Arquivo de entrada {caminho} não encontrado.")
 
     if caminho.suffix.lower() in {".yaml", ".yml"}:
-        return yaml.safe_load(caminho.read_text(encoding="utf-8"))
-    return json.loads(caminho.read_text(encoding="utf-8"))
+        payload = yaml.safe_load(caminho.read_text(encoding="utf-8"))
+    else:
+        payload = json.loads(caminho.read_text(encoding="utf-8"))
+
+    if not payload:
+        raise SystemExit(f"O arquivo {caminho} está vazio ou inválido.")
+
+    return payload
+
+
+def validar_payload(payload: dict[str, Any]) -> None:
+    """Valida campos obrigatórios do payload da NFS-e com mensagens claras."""
+
+    def exige_dict(chave: str) -> dict[str, Any]:
+        bloco = payload.get(chave)
+        if not isinstance(bloco, dict):
+            raise ValueError(f"A seção '{chave}' deve ser um objeto com os campos necessários.")
+        return bloco
+
+    tomador = exige_dict("tomador")
+    servico = exige_dict("servico")
+
+    obrigatorios_tomador = ["razao_social", "documento"]
+    obrigatorios_servico = ["codigo_tributacao", "valor_servico", "discriminacao"]
+
+    for campo in obrigatorios_tomador:
+        if not tomador.get(campo):
+            raise ValueError(f"Campo obrigatório ausente em tomador: '{campo}'.")
+
+    for campo in obrigatorios_servico:
+        if servico.get(campo) in (None, ""):
+            raise ValueError(f"Campo obrigatório ausente em servico: '{campo}'.")
+
+    if "competencia" in payload:
+        competencia = payload["competencia"]
+        if not isinstance(competencia, (str, list, tuple)):
+            raise ValueError("Competência deve ser string 'AAAA-MM' ou sequência [AAAA, MM, DD].")
 
 
 def criar_nota(payload: dict[str, Any]) -> NotaServico:
@@ -116,6 +151,7 @@ def main() -> None:
 
     try:
         payload = carregar_payload(Path(args.input))
+        validar_payload(payload)
         nota = criar_nota(payload)
     except ValueError as exc:
         LOGGER.error(str(exc))
