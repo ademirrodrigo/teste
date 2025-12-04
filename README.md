@@ -87,6 +87,12 @@ Sistema completo para coleta automatizada de documentos fiscais eletrônicos (NF
 6. A CLI inicializa o banco SQLite automaticamente (criando a tabela de empresas caso o painel ainda não tenha sido aberto) e valida
    a presença do certificado `.pfx` antes de enviar os dados.
 
+### Avaliação da API `sped-nfse-amtec`
+- O pacote PHP `nfephp-org/sped-nfse-amtec` (AMTEC/ABRASF 2.0) expõe o webservice SOAP oficial de Goiânia (`GerarNfse` e `ConsultarNfseRps`).
+- Por ser PHP/Composer e possuir apenas métodos síncronos, a integração direta exige ou um microserviço PHP ou a reimplementação dos envelopes SOAP em Python.
+- Restrições importantes: uso de certificado PFX do CNPJ cadastrado, endpoint único para TESTE/PRODUÇÃO e diversas tags ABRASF que não podem ser enviadas (ex.: `ValorIss`, `ItemListaServico`, `Competencia`).
+- Consulte `docs/nfse_amtec_analysis.md` para o detalhamento completo e passos recomendados caso optemos por essa integração.
+
 ## Execução com Systemd
 O script `install.sh` configura o ambiente em servidores Linux (Ubuntu) criando um serviço systemd para o painel Streamlit. Revise o arquivo antes de executar para ajustar caminhos ou usuário do serviço.
 
