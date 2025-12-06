@@ -25,7 +25,7 @@ Sistema completo para coleta automatizada de documentos fiscais eletrônicos (NF
 
 ## Configuração Inicial
 1. Copie `.env.example` para `.env` e ajuste as variáveis conforme necessário.
-2. Instale as dependências utilizando um ambiente virtual:
+2. Instale as dependências utilizando um ambiente virtual (ou simplesmente execute `install.bat` no Windows / `install.sh` no Linux para automatizar todo o processo):
    ```bash
    python -m venv .venv
    source .venv/bin/activate          # Linux/macOS
@@ -34,7 +34,7 @@ Sistema completo para coleta automatizada de documentos fiscais eletrônicos (NF
    python -m pip install -r requirements.txt
    ```
    > 💡 **Windows 11:** Com Python 3.13 certifique-se de atualizar o `pip` (`python -m pip install --upgrade pip`) para baixar o wheel oficial do `lxml 5.3.x`. Caso utilize versões mais antigas do `lxml`, será necessário instalar o [Microsoft C++ Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/).
-3. Execute o painel Streamlit:
+3. Execute o painel Streamlit (**não** execute `py web/app.py`; use o comando do Streamlit ou o `start.bat`/`start.sh` para que as dependências sejam carregadas automaticamente):
    ```bash
    python -m streamlit run web/app.py --server.port 8501
    ```
@@ -47,8 +47,12 @@ Sistema completo para coleta automatizada de documentos fiscais eletrônicos (NF
 ### Scripts rápidos para Windows
 - `install.bat`: instalação padrão (cria/atualiza `.venv` e dependências).
 - `force_install.bat`: reinstalação completa, removendo e recriando o ambiente virtual.
-- `start.bat`: inicialização do painel Streamlit utilizando o ambiente configurado.
+- `start.bat`: inicialização do painel Streamlit utilizando o ambiente configurado; se o ambiente ou o Streamlit não estiverem instalados, o script executa a instalação automaticamente.
 - `verify.bat`: verificação rápida do ambiente (versão do Python, `pip check` e compilação das pastas `app/` e `web/`).
+
+> ℹ️ **Erro “ModuleNotFoundError: No module named 'streamlit'”**
+> - Verifique se você instalou as dependências (`install.bat` no Windows ou `install.sh` no Linux) antes de iniciar.
+> - Utilize `start.bat` (Windows) ou `python -m streamlit run web/app.py` (Linux/macOS) em vez de `py app.py`, pois o aplicativo precisa ser executado pelo CLI do Streamlit.
 
 
 ## Cadastro de Empresas
@@ -60,6 +64,34 @@ Sistema completo para coleta automatizada de documentos fiscais eletrônicos (NF
 2. Informe opcionalmente as chaves de NFC-e (uma por linha) para raspagem pública.
 3. Clique em **🔄 Coletar Agora** para executar as rotinas de coleta.
 4. Os documentos são salvos nas pastas `data/xmls/<CNPJ>/` e `data/html/<CNPJ>/` e registrados no banco SQLite.
+
+## Emissão de NFS-e Goiânia (ISSNet Online)
+- A emissão é feita com certificado A1 (`.pfx`) via automação HTTP do portal do ISSNet Online.
+- O XML é salvo automaticamente em `data/nfse/<CNPJ>/<ANO>/<MES>/NFSe-<numero>-<competencia>.xml` e o resumo opcional em `.json`.
+- Requisitos adicionais:
+  - `pytesseract` + mecanismo Tesseract instalado no sistema para resolver o captcha automaticamente (Linux: `sudo apt install tesseract-ocr`; Windows: [instalador oficial](https://github.com/UB-Mannheim/tesseract/wiki)).
+  - Certificado `.pfx` da empresa na pasta `certs/` e senha correspondente.
+  - O payload da nota é validado antes do envio (tomador/serviço obrigatórios) e o download do XML repete em caso de falhas de rede.
+
+### Passo a passo (CLI)
+1. Cadastre a empresa no painel Streamlit, informando CNPJ e senha do certificado.
+2. Preencha um arquivo YAML/JSON seguindo o modelo `nfse_payload.example.yml`.
+3. Execute a emissão:
+   ```bash
+   ./nfse_emit.sh --empresa 12.345.678/0001-90 --senha-cert SUASENHA --input nfse_payload.example.yml --salvar-json
+   ```
+   - No Windows, utilize: `nfse_emit.bat --empresa 12.345.678/0001-90 --senha-cert SUASENHA --input nfse_payload.example.yml --salvar-json`
+   - Parâmetros opcionais `--usuario-portal` e `--senha-portal` permitem informar credenciais diferentes do CNPJ.
+4. O script cria/usa `.venv`, instala dependências e grava os arquivos no diretório `data/nfse/` respeitando empresa/ano/mês.
+5. Em caso de mudança de layout ou captcha complexo, o módulo registra logs em `logs/coletor.log` para ajuste rápido.
+6. A CLI inicializa o banco SQLite automaticamente (criando a tabela de empresas caso o painel ainda não tenha sido aberto) e valida
+   a presença do certificado `.pfx` antes de enviar os dados.
+
+### Avaliação da API `sped-nfse-amtec`
+- O pacote PHP `nfephp-org/sped-nfse-amtec` (AMTEC/ABRASF 2.0) expõe o webservice SOAP oficial de Goiânia (`GerarNfse` e `ConsultarNfseRps`).
+- Por ser PHP/Composer e possuir apenas métodos síncronos, a integração direta exige ou um microserviço PHP ou a reimplementação dos envelopes SOAP em Python.
+- Restrições importantes: uso de certificado PFX do CNPJ cadastrado, endpoint único para TESTE/PRODUÇÃO e diversas tags ABRASF que não podem ser enviadas (ex.: `ValorIss`, `ItemListaServico`, `Competencia`).
+- Consulte `docs/nfse_amtec_analysis.md` para o detalhamento completo e passos recomendados caso optemos por essa integração.
 
 ## Execução com Systemd
 O script `install.sh` configura o ambiente em servidores Linux (Ubuntu) criando um serviço systemd para o painel Streamlit. Revise o arquivo antes de executar para ajustar caminhos ou usuário do serviço.
