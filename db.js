@@ -51,13 +51,37 @@ async function createUser(phone) {
   return findUserByPhone(phone);
 }
 
+async function syncUserAccessByExpiration(user) {
+  if (!user) return user;
+
+  // Se não houver data, mantém o estado atual (MVP permite plano livre no início).
+  if (!user.expiration_access_date) return user;
+
+  const database = await initDb();
+
+  // Se a data de acesso já passou, bloqueia; se não passou, mantém ativo.
+  const today = new Date().toISOString().slice(0, 10);
+  const shouldBeActive = user.expiration_access_date >= today ? 1 : 0;
+
+  if (user.active !== shouldBeActive) {
+    await database.run('UPDATE users SET active = ? WHERE id = ?', [shouldBeActive, user.id]);
+    user.active = shouldBeActive;
+    console.log(
+      `[DB] Acesso do usuário ${user.phone} atualizado para active=${shouldBeActive} (expira em ${user.expiration_access_date})`
+    );
+  }
+
+  return user;
+}
+
 async function findOrCreateUser(phone) {
   let user = await findUserByPhone(phone);
   if (!user) {
     user = await createUser(phone);
     console.log(`[DB] Novo usuário criado: ${phone}`);
   }
-  return user;
+
+  return syncUserAccessByExpiration(user);
 }
 
 async function listProductsByUser(userId) {
@@ -102,6 +126,7 @@ async function getExpiredProductsByUser(userId) {
 }
 
 async function getUsersForAlerts() {
+  await deactivateExpiredUserAccesses();
   const database = await initDb();
   return database.all('SELECT * FROM users WHERE active = 1');
 }
@@ -125,6 +150,21 @@ async function activateUserAccess(userId, expirationAccessDate) {
   );
 }
 
+async function deactivateExpiredUserAccesses() {
+  const database = await initDb();
+  const result = await database.run(
+    `UPDATE users
+     SET active = 0
+     WHERE expiration_access_date IS NOT NULL
+       AND date(expiration_access_date) < date('now')
+       AND active = 1`
+  );
+
+  if (result.changes > 0) {
+    console.log(`[DB] ${result.changes} usuário(s) desativado(s) por expiração de acesso.`);
+  }
+}
+
 module.exports = {
   initDb,
   findOrCreateUser,
@@ -135,4 +175,5 @@ module.exports = {
   getUsersForAlerts,
   getProductsForUserAlerts,
   activateUserAccess,
+  deactivateExpiredUserAccesses,
 };

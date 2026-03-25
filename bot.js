@@ -17,8 +17,6 @@ const {
 
 dayjs.extend(customParseFormat);
 
-// Estado simples em memória para guiar usuários com baixa familiaridade técnica.
-// Chave = phone, valor = etapa atual do fluxo.
 const userFlows = new Map();
 
 function getMenuText() {
@@ -31,12 +29,11 @@ function getMenuText() {
     '3️⃣ Produtos vencendo (5 dias)',
     '4️⃣ Produtos vencidos',
     '',
-    'Também aceito comandos rápidos:',
+    'Comandos úteis:',
+    '• status (ver validade do acesso)',
     '• menu',
     '• add,arroz,2026-04-10',
-    '• list',
-    '• expiring',
-    '• expired',
+    '• list | expiring | expired',
   ].join('\n');
 }
 
@@ -51,7 +48,8 @@ function getHelpText() {
     '• 2026-12-30',
     '• 30/12/2026',
     '',
-    'Para voltar ao início, envie: *menu*',
+    'Para ver validade do plano, envie *status*.',
+    'Para voltar ao início, envie *menu*',
   ].join('\n');
 }
 
@@ -80,14 +78,37 @@ function parseDateToIso(dateText) {
   return null;
 }
 
-// Placeholder do MVP para lógica de pagamento Pix.
-// Aqui você pode integrar um gateway de pagamento real no futuro.
+// Placeholder de pagamento Pix do MVP.
+// Nesta versão, simulamos confirmação para validar o fluxo de ativação por data.
 async function processPixActivation(user) {
-  console.log(`[PAYMENT] Placeholder Pix para usuário ${user.phone}`);
-  // Exemplo de ativação fictícia por 30 dias:
-  // const expirationAccessDate = dayjs().add(30, 'day').format('YYYY-MM-DD');
-  // await activateUserAccess(user.id, expirationAccessDate);
-  return false;
+  const expirationAccessDate = dayjs().add(30, 'day').format('YYYY-MM-DD');
+  console.log(
+    `[PAYMENT] Placeholder Pix aprovado para ${user.phone}. Acesso até ${expirationAccessDate}`
+  );
+
+  return {
+    success: true,
+    expirationAccessDate,
+  };
+}
+
+function getAccessStatusText(user) {
+  if (user.active !== 1) {
+    if (user.expiration_access_date) {
+      return (
+        '🔒 Seu acesso está inativo.\n' +
+        `Última validade: *${dayjs(user.expiration_access_date).format('DD/MM/YYYY')}*.`
+      );
+    }
+
+    return '🔒 Seu acesso está inativo.';
+  }
+
+  if (!user.expiration_access_date) {
+    return '✅ Acesso ativo sem data de expiração definida.';
+  }
+
+  return `✅ Acesso ativo até *${dayjs(user.expiration_access_date).format('DD/MM/YYYY')}*.`;
 }
 
 async function ensureActiveOrBlock(sock, remoteJid, user) {
@@ -95,9 +116,8 @@ async function ensureActiveOrBlock(sock, remoteJid, user) {
 
   await sock.sendMessage(remoteJid, {
     text:
-      '⚠️ Seu acesso está inativo.\n' +
-      'Para liberar, finalize o pagamento Pix.\n' +
-      'Se quiser testar o placeholder de pagamento, envie: *pay*',
+      `${getAccessStatusText(user)}\n\n` +
+      'Para renovar, envie *pay* (simulação Pix no MVP).',
   });
 
   return false;
@@ -199,12 +219,11 @@ async function handleIncomingMessage(sock, msg) {
     if (!incoming) return;
 
     const phone = remoteJid.split('@')[0];
-    const user = await findOrCreateUser(phone);
+    let user = await findOrCreateUser(phone);
     const command = incoming.toLowerCase();
 
     console.log(`[BOT] Mensagem de ${phone}: ${incoming}`);
 
-    // Comandos sempre disponíveis (mesmo usuário inativo)
     if (['menu', 'oi', 'olá', 'ola', 'início', 'inicio'].includes(command)) {
       clearUserFlow(phone);
       await sock.sendMessage(remoteJid, { text: getMenuText() });
@@ -216,15 +235,25 @@ async function handleIncomingMessage(sock, msg) {
       return;
     }
 
+    if (command === 'status') {
+      await sock.sendMessage(remoteJid, { text: getAccessStatusText(user) });
+      return;
+    }
+
     if (command === 'pay') {
-      const activated = await processPixActivation(user);
-      if (activated) {
-        const expirationAccessDate = dayjs().add(30, 'day').format('YYYY-MM-DD');
-        await activateUserAccess(user.id, expirationAccessDate);
-        await sock.sendMessage(remoteJid, { text: '✅ Pagamento confirmado. Acesso liberado!' });
+      const payment = await processPixActivation(user);
+      if (payment.success) {
+        await activateUserAccess(user.id, payment.expirationAccessDate);
+        user = await findOrCreateUser(phone);
+
+        await sock.sendMessage(remoteJid, {
+          text:
+            '✅ Pagamento confirmado (simulação).\n' +
+            `Seu acesso foi liberado até *${dayjs(payment.expirationAccessDate).format('DD/MM/YYYY')}*.`,
+        });
       } else {
         await sock.sendMessage(remoteJid, {
-          text: '🧪 Placeholder Pix: integração de pagamento ainda não conectada.',
+          text: '❌ Não foi possível confirmar o pagamento agora. Tente novamente.',
         });
       }
       return;
@@ -233,11 +262,9 @@ async function handleIncomingMessage(sock, msg) {
     const canUse = await ensureActiveOrBlock(sock, remoteJid, user);
     if (!canUse) return;
 
-    // Se usuário está em fluxo guiado, prioriza essa tratativa.
     const flowHandled = await handleFlowMessage(sock, remoteJid, phone, user, incoming);
     if (flowHandled) return;
 
-    // Atalhos por número no menu
     if (command === '1') {
       await startAddFlow(sock, remoteJid, phone);
       return;
@@ -258,7 +285,6 @@ async function handleIncomingMessage(sock, msg) {
       return;
     }
 
-    // Mantém comando técnico original para compatibilidade
     if (command.startsWith('add,')) {
       const parts = incoming.split(',');
       if (parts.length < 3) {
