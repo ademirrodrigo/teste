@@ -1,0 +1,19 @@
+{
+  "name": "whatsapp-expiration-tracker",
+  "version": "1.0.0",
+  "description": "WhatsApp-based product expiration tracking service MVP",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "keywords": ["whatsapp", "expiration", "tracker", "baileys"],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@whiskeysockets/baileys": "^6.7.5",
+    "express": "^4.18.2",
+    "better-sqlite3": "^9.4.3",
+    "node-cron": "^3.0.3",
+    "qrcode-terminal": "^0.12.0"
+  }
+}
