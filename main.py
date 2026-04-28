@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import time
 from datetime import date, datetime
 
 from database import atualizar_ultimo_envio, init_db, listar_pendentes
@@ -22,12 +23,30 @@ def tipo_mensagem_para_data(data_vencimento_str: str, hoje: date) -> str | None:
     return None
 
 
+def ja_enviado_hoje(ultimo_envio: str | None, hoje: date) -> bool:
+    if not ultimo_envio:
+        return False
+
+    try:
+        data_ultimo_envio = datetime.fromisoformat(ultimo_envio).date()
+    except ValueError:
+        return False
+    return data_ultimo_envio == hoje
+
+
 def executar_rotina_diaria() -> None:
     init_db()
 
+    api_url = os.getenv("WHATSAPP_API_URL")
+    token = os.getenv("WHATSAPP_TOKEN")
+    if not api_url or not token:
+        raise RuntimeError(
+            "Defina as variáveis WHATSAPP_API_URL e WHATSAPP_TOKEN antes de executar."
+        )
+
     config = WhatsAppConfig(
-        api_url=os.getenv("WHATSAPP_API_URL", "https://api.exemplo.com/send"),
-        token=os.getenv("WHATSAPP_TOKEN", "seu_token_aqui"),
+        api_url=api_url,
+        token=token,
         instance_id=os.getenv("WHATSAPP_INSTANCE_ID"),
     )
 
@@ -35,6 +54,9 @@ def executar_rotina_diaria() -> None:
     pendentes = listar_pendentes()
 
     for cliente in pendentes:
+        if ja_enviado_hoje(cliente["ultimo_envio"], hoje):
+            continue
+
         tipo = tipo_mensagem_para_data(cliente["data_vencimento"], hoje)
         if not tipo:
             continue
@@ -49,5 +71,16 @@ def executar_rotina_diaria() -> None:
             print(f"Falha ao enviar para {cliente['nome']}.")
 
 
+def executar_loop_diario() -> None:
+    while True:
+        print(f"Iniciando ciclo de envio em {datetime.utcnow().isoformat(timespec='seconds')}Z")
+        executar_rotina_diaria()
+        print("Ciclo finalizado. Aguardando 24 horas para o próximo envio.")
+        time.sleep(60 * 60 * 24)
+
+
 if __name__ == "__main__":
-    executar_rotina_diaria()
+    if os.getenv("RUN_DAILY_LOOP", "0") == "1":
+        executar_loop_diario()
+    else:
+        executar_rotina_diaria()

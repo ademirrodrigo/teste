@@ -48,7 +48,7 @@ def listar_pendentes() -> List[Dict]:
 
 
 def atualizar_ultimo_envio(cliente_id: int) -> None:
-    agora = datetime.now().isoformat(timespec="seconds")
+    agora = datetime.utcnow().isoformat(timespec="seconds")
     with closing(get_connection()) as conn:
         conn.execute(
             "UPDATE clientes SET ultimo_envio = ? WHERE id = ?",

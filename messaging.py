@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from typing import Dict
 
 import requests
+from requests import RequestException
 
 
 @dataclass
@@ -48,5 +49,16 @@ def enviar_mensagem(config: WhatsAppConfig, telefone: str, mensagem: str) -> boo
     if config.instance_id:
         url = f"{config.api_url.rstrip('/')}/instances/{config.instance_id}/messages/chat"
 
-    response = requests.post(url, json=payload, headers=headers, timeout=20)
-    return response.ok
+    try:
+        response = requests.post(url, json=payload, headers=headers, timeout=20)
+    except RequestException as exc:
+        print(f"Erro de conexão ao enviar para {telefone}: {exc}")
+        return False
+
+    if not response.ok:
+        print(
+            f"API retornou erro para {telefone}: "
+            f"status={response.status_code}, body={response.text[:200]}"
+        )
+        return False
+    return True
