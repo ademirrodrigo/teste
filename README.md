@@ -76,3 +76,35 @@ O arquivo `nginx.conf` contém um exemplo de configuração para expor o painel 
 - **NFC-e:** Habilite a requisição HTTP no módulo `coletar_nfce_publica` ajustando a URL da consulta pública.
 
 Certifique-se de que os certificados e permissões estão válidos e que a rede do servidor possui acesso aos domínios da SEFAZ.
+
+---
+
+## MVP de Cobrança WhatsApp (Python + wwebjs)
+
+Também foi incluído um MVP simples para cobrança automática via WhatsApp com:
+- `database.py` (SQLite),
+- `main.py` (rotina diária),
+- `messaging.py` (envio por provider REST ou bridge local do wwebjs),
+- `wwebjs_bridge.js` (login por QR code com `whatsapp-web.js`).
+
+### 1) Subir o bridge wwebjs (facilita login)
+```bash
+npm install
+WWEBJS_PORT=3000 WWEBJS_TOKEN=token_local node wwebjs_bridge.js
+```
+
+No primeiro uso, escaneie o QR code exibido no terminal.
+
+### 2) Rodar rotina Python
+```bash
+export WHATSAPP_PROVIDER=wwebjs
+export WHATSAPP_API_URL=http://localhost:3000/send-message
+export WHATSAPP_TOKEN=token_local
+python main.py
+```
+
+Para manter o processo ativo executando diariamente:
+```bash
+export RUN_DAILY_LOOP=1
+python main.py
+```
