@@ -37,17 +37,22 @@ def ja_enviado_hoje(ultimo_envio: str | None, hoje: date) -> bool:
 def executar_rotina_diaria() -> None:
     init_db()
 
+    provider = os.getenv("WHATSAPP_PROVIDER", "rest").lower()
     api_url = os.getenv("WHATSAPP_API_URL")
-    token = os.getenv("WHATSAPP_TOKEN")
-    if not api_url or not token:
+    token = os.getenv("WHATSAPP_TOKEN", "")
+    if not api_url:
+        raise RuntimeError("Defina a variável WHATSAPP_API_URL antes de executar.")
+
+    if provider == "rest" and not token:
         raise RuntimeError(
-            "Defina as variáveis WHATSAPP_API_URL e WHATSAPP_TOKEN antes de executar."
+            "Para provider REST, defina WHATSAPP_TOKEN além de WHATSAPP_API_URL."
         )
 
     config = WhatsAppConfig(
         api_url=api_url,
         token=token,
         instance_id=os.getenv("WHATSAPP_INSTANCE_ID"),
+        provider=provider,
     )
 
     hoje = date.today()

@@ -1,4 +1,4 @@
-"""Envio de mensagens via API REST (UltraMsg/Z-API-like)."""
+"""Envio de mensagens via API REST (UltraMsg/Z-API-like ou wwebjs bridge)."""
 
 from __future__ import annotations
 
@@ -14,6 +14,7 @@ class WhatsAppConfig:
     api_url: str
     token: str
     instance_id: str | None = None
+    provider: str = "rest"
 
 
 def montar_mensagem(tipo: str, nome: str, valor: float) -> str:
@@ -35,20 +36,38 @@ def enviar_mensagem(config: WhatsAppConfig, telefone: str, mensagem: str) -> boo
     Exemplo de endpoint (UltraMsg):
     POST {api_url}/instances/{instance_id}/messages/chat
     """
+    if config.provider == "wwebjs":
+        return enviar_mensagem_wwebjs(config, telefone, mensagem)
+    return enviar_mensagem_rest(config, telefone, mensagem)
+
+
+def enviar_mensagem_rest(config: WhatsAppConfig, telefone: str, mensagem: str) -> bool:
     headers = {
         "Content-Type": "application/json",
         "Authorization": f"Bearer {config.token}",
     }
-    payload = {
-        "to": telefone,
-        "body": mensagem,
-    }
+    payload = {"to": telefone, "body": mensagem}
 
-    # Para APIs que exigem instance_id no path.
     url = config.api_url
     if config.instance_id:
         url = f"{config.api_url.rstrip('/')}/instances/{config.instance_id}/messages/chat"
 
+    return _post_json(url, payload, headers, telefone)
+
+
+def enviar_mensagem_wwebjs(config: WhatsAppConfig, telefone: str, mensagem: str) -> bool:
+    """
+    Espera um bridge local Node.js com whatsapp-web.js.
+    Endpoint padrão: POST http://localhost:3000/send-message
+    """
+    headers = {"Content-Type": "application/json"}
+    if config.token:
+        headers["Authorization"] = f"Bearer {config.token}"
+    payload = {"phone": telefone, "message": mensagem}
+    return _post_json(config.api_url.rstrip("/"), payload, headers, telefone)
+
+
+def _post_json(url: str, payload: Dict[str, str], headers: Dict[str, str], telefone: str) -> bool:
     try:
         response = requests.post(url, json=payload, headers=headers, timeout=20)
     except RequestException as exc:
